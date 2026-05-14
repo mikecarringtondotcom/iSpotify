@@ -1,5 +1,8 @@
 export const CLIENT_ID = '3c981d418ad24a4f977cde7279b37496'
-export const REDIRECT_URI = ['https://writingonthewall-mv6xwnxyi-mikes-projects-651e8757.vercel.app', 'http://localhost:5173']
+export const REDIRECT_URI =
+  window.location.hostname === '127.0.0.1'
+    ? 'http://127.0.0.1:5173/'
+    : 'https://i-spotify-ten.vercel.app/'
 
 export const SPOTIFY_SCOPES = [
   'streaming',
