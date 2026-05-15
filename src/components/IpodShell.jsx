@@ -1,103 +1,102 @@
 const styles = {
   shell: {
     position: 'relative',
-    zIndex: 1,
-    width: '320px',
-    background: 'linear-gradient(145deg, #f0f2f4, #c0c2c4, #e8eaec, #b0b2b4)',
-    borderRadius: '36px',
-    boxShadow: `
-      0 0 0 1px rgba(255,255,255,0.6) inset,
-      0 0 0 2px rgba(0,0,0,0.2) inset,
-      0 30px 80px rgba(0,0,0,0.8),
-      0 10px 30px rgba(0,0,0,0.5),
-      0 2px 6px rgba(255,255,255,0.3)
+    zIndex: 9999,
+    width: '300px',
+    height: '510px',
+    background:
+`       repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0px,
+        rgba(255, 255, 255, 0.03) 1px,
+        transparent 1px,
+        transparent 3px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.02) 0px,
+        rgba(0, 0, 0, 0.02) 2px,
+        transparent 2px,
+        transparent 4px
+      ),
+      linear-gradient(
+        135deg, 
+        #ffffff 0%, 
+        #dcdcdc 25%, 
+        #c8c8c8 50%, 
+        #b0b0b0 80%, 
+        #959595 100%
+      )
     `,
+    borderRadius: '34px',
+    boxShadow: `
+      inset 0 2px 3px rgba(255, 255, 255, 0.8),
+      inset 2px 0 3px rgba(255, 255, 255, 0.3),
+      inset -2px -2px 5px rgba(149, 149, 149, 0.7),
+      inset 0 -5px 15px rgba(149, 149, 149, 0.9),
+      0 10px 25px rgba(0, 0, 0, 0.15)
+    `,
+    border: '1px solid #b5b5b5',
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    padding: '22px 20px 18px',
-    gap: '16px',
+    padding: '28px 22px 30px',
     animation: 'bootup 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both',
   },
-  topNotch: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px',
-    marginBottom: '-8px',
-  },
-  camera: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    background: 'radial-gradient(circle at 35% 35%, #3a3a3a, #111)',
-    boxShadow: '0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1)',
-  },
-  speakerGrille: {
-    display: 'flex',
-    gap: '2px',
-    alignItems: 'center',
-  },
-  speakerDot: {
-    width: '2px',
-    height: '6px',
-    borderRadius: '1px',
-    background: 'rgba(0,0,0,0.35)',
+  // Subtle vertical "brushed aluminum" sheen overlay
+  brushed: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: '34px',
+    background:
+      'repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, rgba(0,0,0,0.02) 1px 2px)',
+    pointerEvents: 'none',
+    mixBlendMode: 'overlay',
+    opacity: 0.6,
   },
   screenBezel: {
-    width: '280px',
-    height: '220px',
-    background: '#111',
-    borderRadius: '16px',
-    padding: '4px',
+    width: '256px',
+    height: '192px',
+    background: 'linear-gradient(180deg, #1a1a1a, #0a0a0a)',
+    borderRadius: '4px',
+    padding: '5px',
     boxShadow: `
-      0 0 0 1px rgba(0,0,0,0.8),
-      inset 0 0 0 1px rgba(255,255,255,0.08),
-      0 4px 12px rgba(0,0,0,0.5)
+      0 0 0 1px rgba(0,0,0,0.55),
+      inset 0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 2px 6px rgba(0,0,0,0.9),
+      0 1px 1px rgba(255,255,255,0.7)
     `,
-    overflow: 'hidden',
+    position: 'relative',
+    zIndex: 1,
   },
   screen: {
     width: '100%',
     height: '100%',
-    borderRadius: '12px',
-    background: '#000',
+    background: '#fff',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    boxShadow: 'inset 0 0 1px rgba(255,255,255,0.2)',
   },
-  bottomPort: {
-    width: '50px',
-    height: '6px',
-    background: 'linear-gradient(180deg, #888, #aaa, #888)',
-    borderRadius: '3px',
-    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3), 0 1px rgba(255,255,255,0.4)',
+  wheelArea: {
+    marginTop: 'auto',
+    paddingTop: '22px',
+    display: 'flex',
+    justifyContent: 'center',
+    position: 'relative',
+    zIndex: 1,
   },
 }
 
-const SPEAKER_DOTS = Array.from({ length: 5 })
-
-export function IpodShell({ children }) {
+export function IpodShell({ children, wheel }) {
   return (
     <div style={styles.shell}>
-      {/* Top notch: camera + speaker */}
-      <div style={styles.topNotch}>
-        <div style={styles.camera} />
-        <div style={styles.speakerGrille}>
-          {SPEAKER_DOTS.map((_, i) => (
-            <div key={i} style={styles.speakerDot} />
-          ))}
-        </div>
-      </div>
-
-      {/* Screen bezel */}
+      <div style={styles.brushed} />
       <div style={styles.screenBezel}>
         <div style={styles.screen}>{children}</div>
       </div>
-
-      {/* Connector port at bottom */}
-      <div style={styles.bottomPort} />
+      <div style={styles.wheelArea}>{wheel}</div>
     </div>
   )
 }

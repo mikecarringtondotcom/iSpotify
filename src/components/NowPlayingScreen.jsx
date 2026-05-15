@@ -6,122 +6,143 @@ const styles = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    background: '#000',
+    background: 'linear-gradient(180deg, #fdfdfd 0%, #e8eaee 100%)',
+    color: '#111',
+    fontFamily: 'Helvetica, Arial, sans-serif',
     overflow: 'hidden',
+    position: 'relative',
   },
   header: {
-    background: 'linear-gradient(180deg, #1c1c1c, #111)',
-    padding: '6px 10px 5px',
+    background: 'linear-gradient(180deg, #f3f4f6 0%, #c8cacd 50%, #b4b6b9 100%)',
+    borderBottom: '1px solid rgba(0,0,0,0.35)',
+    padding: '2px 5px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexShrink: 0,
+    height: '16px',
   },
   headerTitle: {
-    color: '#fff',
+    color: '#111',
     fontSize: '9px',
-    fontWeight: 600,
-    letterSpacing: '0.3px',
-    textAlign: 'center',
-    flex: 1,
+    fontWeight: 700,
+    letterSpacing: '0.2px',
   },
-  battery: {
-    width: '14px',
-    height: '7px',
-    border: '1px solid rgba(255,255,255,0.5)',
-    borderRadius: '2px',
-    position: 'relative',
-  },
-  artContainer: {
-    flex: 1,
+  headerIcons: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: '10px',
-    background: '#0a0a0a',
-    position: 'relative',
-    overflow: 'hidden',
-    minHeight: 0,
+    gap: '3px',
   },
-  artBg: {
-    position: 'absolute',
-    inset: '-10px',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    filter: 'blur(20px) saturate(1.5)',
-    opacity: 0.25,
-    transition: 'background-image 0.5s',
+  playIcon: {
+    width: 0,
+    height: 0,
+    borderTop: '4px solid transparent',
+    borderBottom: '4px solid transparent',
+    borderLeft: '6px solid #1d6cff',
+  },
+  body: {
+    flex: 1,
+    display: 'flex',
+    padding: '8px',
+    gap: '8px',
+    minHeight: 0,
+    alignItems: 'flex-start',
   },
   art: {
-    width: '110px',
-    height: '110px',
-    borderRadius: '8px',
+    width: '72px',
+    height: '72px',
     objectFit: 'cover',
-    boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
-    position: 'relative',
-    zIndex: 1,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+    flexShrink: 0,
   },
   artPlaceholder: {
-    width: '110px',
-    height: '110px',
-    borderRadius: '8px',
-    background: '#222',
+    width: '72px',
+    height: '72px',
+    background: '#cfd1d4',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '40px',
-    color: '#444',
-    position: 'relative',
-    zIndex: 1,
-  },
-  trackInfo: {
-    background: 'linear-gradient(0deg, #111, #0d0d0d)',
-    padding: '8px 10px 6px',
+    fontSize: '28px',
+    color: '#888',
     flexShrink: 0,
   },
-  trackName: {
-    color: '#fff',
-    fontSize: '11px',
-    fontWeight: 600,
+  info: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
     overflow: 'hidden',
-    letterSpacing: '0.2px',
+    minWidth: 0,
+    paddingTop: '2px',
+  },
+  trackName: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#111',
+    overflow: 'hidden',
     whiteSpace: 'nowrap',
+    lineHeight: 1.2,
   },
   trackArtist: {
-    color: '#888',
-    fontSize: '9px',
+    fontSize: '10px',
+    color: '#222',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    marginTop: '2px',
+    lineHeight: 1.2,
+  },
+  trackAlbum: {
+    fontSize: '10px',
+    color: '#222',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     marginTop: '1px',
+    lineHeight: 1.2,
   },
-  progressWrap: {
-    height: '2px',
-    background: '#333',
-    borderRadius: '1px',
-    marginTop: '6px',
+  trackNumber: {
+    fontSize: '10px',
+    color: '#111',
+    marginTop: '10px',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  footer: {
+    padding: '4px 8px 8px',
+    flexShrink: 0,
+  },
+  progressRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  timeLabel: {
+    fontSize: '9px',
+    color: '#111',
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: 600,
+    minWidth: '24px',
+  },
+  timeRight: {
+    textAlign: 'right',
+  },
+  progressTrack: {
+    flex: 1,
+    height: '5px',
+    background: 'linear-gradient(180deg, #d6d8dc, #ecedee)',
+    border: '1px solid rgba(0,0,0,0.35)',
+    borderRadius: '3px',
     overflow: 'hidden',
+    boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.15)',
   },
   progressFill: {
     height: '100%',
-    background: 'linear-gradient(90deg, #1db954, #21d65b)',
-    borderRadius: '1px',
+    background: 'linear-gradient(180deg, #5aa6ff 0%, #1d6cff 50%, #0d4ec9 100%)',
     transition: 'width 1s linear',
-  },
-  timeRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginTop: '2px',
-  },
-  timeLabel: {
-    color: '#555',
-    fontSize: '7px',
-    fontVariantNumeric: 'tabular-nums',
   },
   deviceWarning: {
     position: 'absolute',
     inset: 0,
-    background: 'rgba(0,0,0,0.85)',
+    background: 'rgba(255,255,255,0.92)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -129,10 +150,9 @@ const styles = {
     gap: '6px',
     zIndex: 10,
     padding: '12px',
-    borderRadius: '12px',
   },
   deviceWarningText: {
-    color: '#fff',
+    color: '#111',
     fontSize: '9px',
     textAlign: 'center',
     lineHeight: 1.5,
@@ -141,10 +161,8 @@ const styles = {
 
 export function NowPlayingScreen({ playerState, progressMs, durationMs, progressPct }) {
   const track = playerState?.track_window?.current_track
-  const isPlaying = playerState && !playerState.paused
   const nameScrollRef = useRef(null)
 
-  // Enable CSS scroll animation if text overflows
   useEffect(() => {
     const el = nameScrollRef.current
     if (!el) return
@@ -158,63 +176,62 @@ export function NowPlayingScreen({ playerState, progressMs, durationMs, progress
   }, [track?.name])
 
   const albumImageUrl = track?.album?.images?.[0]?.url
+  const trackNumber = track?.track_number
+  const totalTracks = track?.album?.total_tracks
+  const remainingMs = Math.max(0, durationMs - progressMs)
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <div style={{ width: '30px' }} />
         <span style={styles.headerTitle}>Now Playing</span>
-        <Battery />
+        <div style={styles.headerIcons}>
+          <div style={styles.playIcon} />
+          <Battery />
+        </div>
       </div>
 
-      <div style={styles.artContainer}>
-        {albumImageUrl && (
-          <div
-            style={{ ...styles.artBg, backgroundImage: `url(${albumImageUrl})` }}
-          />
-        )}
-
+      <div style={styles.body}>
         {!playerState && (
           <div style={styles.deviceWarning}>
-            <span style={{ fontSize: '20px' }}>📱</span>
             <p style={styles.deviceWarningText}>
-              Open Spotify on any device and start playing, then press play here.
+              Press play and resume ur Spotify
             </p>
           </div>
         )}
 
         {albumImageUrl ? (
-          <img
-            src={albumImageUrl}
-            alt="Album art"
-            style={{
-              ...styles.art,
-              animation: isPlaying ? 'albumPulse 2s ease-in-out infinite' : 'none',
-            }}
-          />
+          <img src={albumImageUrl} alt="Album art" style={styles.art} />
         ) : (
           <div style={styles.artPlaceholder}>♪</div>
         )}
+
+        <div style={styles.info}>
+          <div style={styles.trackName}>
+            <span ref={nameScrollRef} style={{ display: 'block', whiteSpace: 'nowrap' }}>
+              {track?.name ?? 'No track playing'}
+            </span>
+          </div>
+          <div style={styles.trackArtist}>
+            {track?.artists?.map((a) => a.name).join(', ') ?? 'Connect Spotify'}
+          </div>
+          {track?.album?.name && <div style={styles.trackAlbum}>{track.album.name}</div>}
+          {trackNumber && totalTracks && (
+            <div style={styles.trackNumber}>
+              {trackNumber} of {totalTracks}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div style={styles.trackInfo}>
-        <div style={styles.trackName}>
-          <span ref={nameScrollRef} style={{ display: 'block', whiteSpace: 'nowrap' }}>
-            {track?.name ?? 'No track playing'}
-          </span>
-        </div>
-
-        <div style={styles.trackArtist}>
-          {track?.artists?.map((a) => a.name).join(', ') ?? 'Connect Spotify to begin'}
-        </div>
-
-        <div style={styles.progressWrap}>
-          <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
-        </div>
-
-        <div style={styles.timeRow}>
+      <div style={styles.footer}>
+        <div style={styles.progressRow}>
           <span style={styles.timeLabel}>{formatMs(progressMs)}</span>
-          <span style={styles.timeLabel}>{formatMs(durationMs)}</span>
+          <div style={styles.progressTrack}>
+            <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
+          </div>
+          <span style={{ ...styles.timeLabel, ...styles.timeRight }}>
+            -{formatMs(remainingMs)}
+          </span>
         </div>
       </div>
     </div>
@@ -223,7 +240,16 @@ export function NowPlayingScreen({ playerState, progressMs, durationMs, progress
 
 function Battery() {
   return (
-    <div style={styles.battery}>
+    <div
+      style={{
+        width: '15px',
+        height: '8px',
+        border: '1px solid #111',
+        borderRadius: '1px',
+        position: 'relative',
+        background: '#fff',
+      }}
+    >
       <div
         style={{
           position: 'absolute',
@@ -231,20 +257,18 @@ function Battery() {
           top: '1px',
           bottom: '1px',
           width: '70%',
-          background: '#4cd964',
-          borderRadius: '1px',
+          background: 'linear-gradient(180deg, #6ce06c, #2fa82f)',
         }}
       />
-      {/* Nub */}
       <div
         style={{
           position: 'absolute',
-          right: '-4px',
+          right: '-3px',
           top: '50%',
           transform: 'translateY(-50%)',
           width: '2px',
           height: '4px',
-          background: 'rgba(255,255,255,0.5)',
+          background: '#111',
           borderRadius: '0 1px 1px 0',
         }}
       />

@@ -20,7 +20,7 @@ export function useSpotifyPlayer(accessToken) {
       const player = new window.Spotify.Player({
         name: 'iSpotify',
         getOAuthToken: (cb) => cb(accessToken),
-        volume: 0.7,
+        volume: 1.0,
       })
 
       player.addListener('ready', ({ device_id }) => {
@@ -70,19 +70,11 @@ export function useSpotifyPlayer(accessToken) {
   const nextTrack = useCallback(() => playerRef.current?.nextTrack(), [])
   const previousTrack = useCallback(() => playerRef.current?.previousTrack(), [])
 
-  const adjustVolume = useCallback(async (delta) => {
-    if (!playerRef.current) return
-    const current = await playerRef.current.getVolume()
-    const next = Math.min(1, Math.max(0, current + delta))
-    playerRef.current.setVolume(next)
-    return Math.round(next * 100)
-  }, [])
-
   return {
     playerState,
     isReady,
     deviceId,
     error,
-    controls: { togglePlay, nextTrack, previousTrack, adjustVolume },
+    controls: { togglePlay, nextTrack, previousTrack },
   }
 }

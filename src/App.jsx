@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { Html, OrbitControls } from '@react-three/drei'
 import { buildAuthUrl, exchangeCodeForToken } from './utils/spotify'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import { useProgress } from './hooks/useProgress'
@@ -6,12 +8,14 @@ import { useToast } from './hooks/useToast'
 import { IpodShell } from './components/IpodShell'
 import { LoginScreen } from './components/LoginScreen'
 import { NowPlayingScreen } from './components/NowPlayingScreen'
+import { MenuScreen } from './components/MenuScreen'
 import { ClickWheel } from './components/ClickWheel'
 import { Toast } from './components/Toast'
 import { Particles } from './components/Particles'
 
 export default function App() {
   const [accessToken, setAccessToken] = useState(null)
+  const [view, setView] = useState('now_playing')
 
   // ── Handle OAuth callback & saved token ──────────────────────
   useEffect(() => {
@@ -64,7 +68,12 @@ export default function App() {
       }
       switch (action) {
         case 'play_pause':
-          await controls.togglePlay()
+          // Center acts as Select on the menu, Play/Pause on Now Playing.
+          if (view === 'menu') {
+            setView('now_playing')
+          } else {
+            await controls.togglePlay()
+          }
           break
         case 'next':
           await controls.nextTrack()
@@ -72,19 +81,12 @@ export default function App() {
         case 'prev':
           await controls.previousTrack()
           break
-        case 'vol': {
-          const newVol = await controls.adjustVolume(+0.1)
-          if (newVol !== undefined) showToast(`Volume: ${newVol}%`)
+        case 'menu':
+          setView((v) => (v === 'menu' ? 'now_playing' : 'menu'))
           break
-        }
-        case 'menu': {
-          const newVol = await controls.adjustVolume(-0.1)
-          if (newVol !== undefined) showToast(`Volume: ${newVol}%`)
-          break
-        }
       }
     },
-    [isLoggedIn, controls, showToast],
+    [isLoggedIn, controls, showToast, view],
   )
 
   // ── Keyboard Shortcuts ───────────────────────────────────────
@@ -93,10 +95,11 @@ export default function App() {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return
       const map = {
         Space:      'play_pause',
+        Enter:      'play_pause',
         ArrowRight: 'next',
         ArrowLeft:  'prev',
-        ArrowUp:    'vol',
-        ArrowDown:  'menu',
+        ArrowUp:    'menu',
+        Escape:     'menu',
       }
       const action = map[e.code]
       if (action) {
@@ -113,24 +116,41 @@ export default function App() {
     window.location.href = await buildAuthUrl()
   }
 
+  function renderScreen() {
+    if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />
+    if (view === 'menu') return <MenuScreen />
+    return (
+      <NowPlayingScreen
+        playerState={playerState}
+        progressMs={progressMs}
+        durationMs={durationMs}
+        progressPct={progressPct}
+      />
+    )
+  }
+
   return (
     <>
       <Particles />
 
-      <IpodShell>
-        {isLoggedIn ? (
-          <NowPlayingScreen
-            playerState={playerState}
-            progressMs={progressMs}
-            durationMs={durationMs}
-            progressPct={progressPct}
-          />
-        ) : (
-          <LoginScreen onLogin={handleLogin} />
-        )}
-      </IpodShell>
-
-      <ClickWheel onAction={handleWheelAction} />
+      <Canvas
+        camera={{ position: [0, 0, 300], fov: 50, near: 1, far: 5000 }}
+        style={{ position: 'fixed', inset: 0, touchAction: 'none' }}
+        gl={{ alpha: true, antialias: true }}
+      >
+        <OrbitControls
+          enableZoom={false}
+          enablePan={false}
+          enableDamping
+          dampingFactor={0.12}
+          rotateSpeed={0.6}
+        />
+        <Html transform scale={15}>
+          <IpodShell wheel={<ClickWheel onAction={handleWheelAction} />}>
+            {renderScreen()}
+          </IpodShell>
+        </Html>
+      </Canvas>
 
       <Toast message={toastMessage} />
     </>

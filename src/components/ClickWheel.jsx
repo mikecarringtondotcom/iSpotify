@@ -1,22 +1,24 @@
 import { useCallback } from 'react'
 
 /**
- * The four arc zones of the click wheel, each mapped to an action.
- * Positions are defined as absolute insets so they don't overlap
- * the center button hit area.
+ * Four arc zones on the click wheel, laid out like a real iPod Classic:
+ *   top    → MENU
+ *   right  → next track (⏭)
+ *   bottom → play / pause (⏯)
+ *   left   → previous track (⏮)
  */
 const WHEEL_ZONES = [
-  { id: 'menu', label: 'Menu', style: { top: 0,    left: '25%', width: '50%', height: '35%' }, action: 'menu' },
-  { id: 'next', label: '▶▶',  style: { bottom: 0,  left: '25%', width: '50%', height: '35%' }, action: 'next' },
-  { id: 'prev', label: '◀◀',  style: { left: 0,    top: '25%',  width: '35%', height: '50%' }, action: 'prev' },
-  { id: 'vol',  label: '♫',   style: { right: 0,   top: '25%',  width: '35%', height: '50%' }, action: 'vol'  },
+  { id: 'menu', label: 'MENU', style: { top: 0,    left: '25%', width: '50%', height: '35%' }, action: 'menu'       },
+  { id: 'next', label: '⏭', style: { right: 0, top: '25%',  width: '35%', height: '50%' }, action: 'next'       },
+  { id: 'play', label: '⏯', style: { bottom: 0, left: '25%', width: '50%', height: '35%' }, action: 'play_pause' },
+  { id: 'prev', label: '⏮', style: { left: 0,  top: '25%',  width: '35%', height: '50%' }, action: 'prev'       },
 ]
 
 const LABEL_POSITIONS = {
-  menu: { top: '12px',    left: '50%', transform: 'translateX(-50%)' },
-  next: { bottom: '12px', left: '50%', transform: 'translateX(-50%)' },
-  prev: { left: '12px',   top: '50%',  transform: 'translateY(-50%)' },
-  vol:  { right: '12px',  top: '50%',  transform: 'translateY(-50%)' },
+  menu: { top: '14px',    left: '50%', transform: 'translateX(-50%)' },
+  next: { right: '14px',  top: '50%',  transform: 'translateY(-50%)' },
+  play: { bottom: '14px', left: '50%', transform: 'translateX(-50%)' },
+  prev: { left: '14px',   top: '50%',  transform: 'translateY(-50%)' },
 }
 
 export function ClickWheel({ onAction }) {
@@ -33,34 +35,35 @@ export function ClickWheel({ onAction }) {
   }, [onAction])
 
   return (
-    <div style={styles.wrap}>
-      <div style={styles.wheel}>
-        {/* Arc zone labels */}
-        {WHEEL_ZONES.map(({ id, label }) => (
-          <span key={id} style={{ ...styles.label, ...LABEL_POSITIONS[id] }}>
-            {label}
-          </span>
-        ))}
+    <div style={styles.wheel}>
+      {WHEEL_ZONES.map(({ id, label }) => (
+        <span
+          key={id}
+          style={{
+            ...styles.label,
+            ...LABEL_POSITIONS[id],
+            ...(id === 'menu' ? styles.menuLabel : styles.glyphLabel),
+          }}
+        >
+          {label}
+        </span>
+      ))}
 
-        {/* Clickable arc zones */}
-        {WHEEL_ZONES.map(({ id, style, action }) => (
-          <div
-            key={id}
-            style={{ ...styles.zone, ...style }}
-            onClick={(e) => handleZoneClick(action, e)}
-          />
-        ))}
+      {WHEEL_ZONES.map(({ id, style, action }) => (
+        <div
+          key={id}
+          style={{ ...styles.zone, ...style }}
+          onClick={(e) => handleZoneClick(action, e)}
+        />
+      ))}
 
-        {/* Center button */}
-        <button style={styles.centerBtn} onClick={handleCenterClick}>
-          <div style={styles.centerBtnInner} />
-        </button>
-      </div>
+      <button style={styles.centerBtn} onClick={handleCenterClick}>
+        <div style={styles.centerBtnInner} />
+      </button>
     </div>
   )
 }
 
-/** Creates a short radial ripple at the click position on the wheel */
 function spawnRipple(wheelEl, e) {
   const rect = wheelEl.getBoundingClientRect()
   const x = e.clientX - rect.left
@@ -81,36 +84,40 @@ function spawnRipple(wheelEl, e) {
 }
 
 const styles = {
-  wrap: {
-    position: 'relative',
-    width: '180px',
-    height: '180px',
-    flexShrink: 0,
-  },
   wheel: {
     width: '180px',
     height: '180px',
     borderRadius: '50%',
-    background: 'radial-gradient(circle at 40% 35%, #e8eaec, #c0c2c4 40%, #a8aaac 80%, #909294)',
+    background:
+      'radial-gradient(circle at 42% 38%, #f2f3f5 0%, #e3e4e6 35%, #c8cacc 70%, #b0b2b4 100%)',
     boxShadow: `
-      0 0 0 2px rgba(255,255,255,0.5) inset,
-      0 0 0 3px rgba(0,0,0,0.15) inset,
-      0 6px 20px rgba(0,0,0,0.4),
-      0 2px 4px rgba(255,255,255,0.3)
+      0 0 0 1px rgba(255,255,255,0.85) inset,
+      0 0 0 2px rgba(0,0,0,0.12) inset,
+      inset 0 2px 4px rgba(0,0,0,0.08),
+      inset 0 -1px 2px rgba(255,255,255,0.5),
+      0 4px 10px rgba(0,0,0,0.18),
+      0 1px 2px rgba(0,0,0,0.1)
     `,
     position: 'relative',
     userSelect: 'none',
     overflow: 'hidden',
+    flexShrink: 0,
   },
   label: {
     position: 'absolute',
-    color: 'rgba(50,50,50,0.7)',
-    fontSize: '7px',
-    fontWeight: 600,
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase',
+    color: '#6a6c6e',
     pointerEvents: 'none',
     zIndex: 1,
+    fontFamily: 'Helvetica, Arial, sans-serif',
+  },
+  menuLabel: {
+    fontSize: '9px',
+    fontWeight: 700,
+    letterSpacing: '1px',
+  },
+  glyphLabel: {
+    fontSize: '13px',
+    lineHeight: 1,
   },
   zone: {
     position: 'absolute',
@@ -122,16 +129,19 @@ const styles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '62px',
-    height: '62px',
+    width: '64px',
+    height: '64px',
     borderRadius: '50%',
-    background: 'radial-gradient(circle at 40% 35%, #f0f2f4, #c8cacc)',
+    background:
+      'radial-gradient(circle at 42% 38%, #fafbfc 0%, #e0e2e4 55%, #c0c2c4 100%)',
     border: 'none',
     cursor: 'pointer',
     boxShadow: `
-      0 0 0 1px rgba(255,255,255,0.6) inset,
-      0 0 0 2px rgba(0,0,0,0.1) inset,
-      0 3px 8px rgba(0,0,0,0.3)
+      0 0 0 1px rgba(255,255,255,0.9) inset,
+      0 0 0 2px rgba(0,0,0,0.12) inset,
+      inset 0 1px 2px rgba(255,255,255,0.7),
+      inset 0 -2px 3px rgba(0,0,0,0.08),
+      0 2px 5px rgba(0,0,0,0.2)
     `,
     display: 'flex',
     alignItems: 'center',
@@ -140,10 +150,10 @@ const styles = {
     transition: 'transform 0.1s, box-shadow 0.1s',
   },
   centerBtnInner: {
-    width: '10px',
-    height: '10px',
+    width: '8px',
+    height: '8px',
     borderRadius: '50%',
-    background: 'radial-gradient(circle at 40% 35%, #e0e2e4, #b0b2b4)',
+    background: 'radial-gradient(circle at 40% 35%, #d0d2d4, #a8aaac)',
     pointerEvents: 'none',
   },
 }

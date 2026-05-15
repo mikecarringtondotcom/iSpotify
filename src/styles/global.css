@@ -19,7 +19,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 30% 20%, #1a1a2e, #0d0d1a 60%, #000 100%);
+  background: linear-gradient(160deg, #d8dadc 0%, #a8aaac 100%);
   font-family: var(--font);
   overflow: hidden;
 }
