@@ -70,14 +70,13 @@ export function MenuScreen() {
       </div>
 
       <div style={styles.body}>
-        <div style={styles.name}>Your Name Here</div>
-        <div style={styles.role}>Role / Title</div>
+        <div style={styles.name}>iSpotify</div>
+        <div style={styles.role}>for mikeincode by mikeincode</div>
 
         <div style={styles.divider} />
 
         <p style={styles.bio}>
-          Quick bio placeholder — replace this with a sentence or two about
-          who you are, what you build, and what you're into.
+          Yeh bro yk i wanted to have the menu button but making a menu isnt prioriy rn so onto the next thing, Don't forget abt this though.
         </p>
 
         <div style={styles.hint}>Press MENU to go back</div>
