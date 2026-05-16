@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
+import { Spherical, Vector3 } from 'three'
 import { buildAuthUrl, exchangeCodeForToken } from './utils/spotify'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import { useProgress } from './hooks/useProgress'
@@ -12,6 +13,61 @@ import { MenuScreen } from './components/MenuScreen'
 import { ClickWheel } from './components/ClickWheel'
 import { Toast } from './components/Toast'
 import { Particles } from './components/Particles'
+
+const REST_AZIMUTH = 0
+const REST_POLAR = Math.PI / 2
+const SOFT_LIMIT = Math.PI / 15   // 15° — past this, spring back on release
+const HARD_LIMIT = Math.PI / 5    // 20° — drag can never exceed this
+const SPRING = 0.12               // higher = snappier return
+
+function RubberBandControls() {
+  const ref = useRef(null)
+  const dragging = useRef(false)
+  const spherical = useRef(new Spherical()).current
+  const offset = useRef(new Vector3()).current
+
+  useFrame(() => {
+    const c = ref.current
+    if (!c || dragging.current) return
+
+    offset.subVectors(c.object.position, c.target)
+    spherical.setFromVector3(offset)
+
+    let changed = false
+    if (Math.abs(spherical.theta - REST_AZIMUTH) > SOFT_LIMIT) {
+      const goal = REST_AZIMUTH + Math.sign(spherical.theta - REST_AZIMUTH) * SOFT_LIMIT
+      spherical.theta += (goal - spherical.theta) * SPRING
+      changed = true
+    }
+    if (Math.abs(spherical.phi - REST_POLAR) > SOFT_LIMIT) {
+      const goal = REST_POLAR + Math.sign(spherical.phi - REST_POLAR) * SOFT_LIMIT
+      spherical.phi += (goal - spherical.phi) * SPRING
+      changed = true
+    }
+    if (changed) {
+      offset.setFromSpherical(spherical)
+      c.object.position.copy(c.target).add(offset)
+      c.update()
+    }
+  })
+
+  return (
+    <OrbitControls
+      ref={ref}
+      enableZoom={false}
+      enablePan={false}
+      enableDamping
+      dampingFactor={0.12}
+      rotateSpeed={0.3}
+      minAzimuthAngle={-HARD_LIMIT}
+      maxAzimuthAngle={HARD_LIMIT}
+      minPolarAngle={REST_POLAR - HARD_LIMIT}
+      maxPolarAngle={REST_POLAR + HARD_LIMIT}
+      onStart={() => { dragging.current = true }}
+      onEnd={() => { dragging.current = false }}
+    />
+  )
+}
 
 export default function App() {
   const [accessToken, setAccessToken] = useState(null)
@@ -138,13 +194,7 @@ export default function App() {
         style={{ position: 'fixed', inset: 0, touchAction: 'none' }}
         gl={{ alpha: true, antialias: true }}
       >
-        <OrbitControls
-          enableZoom={false}
-          enablePan={false}
-          enableDamping
-          dampingFactor={0.12}
-          rotateSpeed={0.6}
-        />
+        <RubberBandControls />
         <Html transform scale={15}>
           <IpodShell wheel={<ClickWheel onAction={handleWheelAction} />}>
             {renderScreen()}
