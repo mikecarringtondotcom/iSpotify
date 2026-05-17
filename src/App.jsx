@@ -1,24 +1,39 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import { Spherical, Vector3 } from 'three'
-import { buildAuthUrl, exchangeCodeForToken } from './utils/spotify'
+import { buildAuthUrl, exchangeCodeForToken, playContext, playTracks, setShuffle } from './utils/spotify'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import { useProgress } from './hooks/useProgress'
 import { useToast } from './hooks/useToast'
-import { IpodShell } from './components/IpodShell'
+import { useDocumentPiP } from './hooks/useDocumentPiP'
+import { usePomodoro } from './hooks/usePomodoro'
+import { IpodShell, IPOD_OUTER_WIDTH, IPOD_OUTER_HEIGHT } from './components/IpodShell'
 import { LoginScreen } from './components/LoginScreen'
 import { NowPlayingScreen } from './components/NowPlayingScreen'
-import { MenuScreen } from './components/MenuScreen'
+import { MenuScreen, MENU_ITEMS } from './components/MenuScreen'
+import { PlaylistsScreen } from './components/PlaylistsScreen'
+import { LikedSongsScreen } from './components/LikedSongsScreen'
+import { ExtrasScreen, EXTRAS_ITEMS } from './components/ExtrasScreen'
+import { PomodoroScreen } from './components/PomodoroScreen'
 import { ClickWheel } from './components/ClickWheel'
 import { Toast } from './components/Toast'
 import { Particles } from './components/Particles'
+import './styles/global.css';
+
+const themes = {'orange': '--bg-color: #F9B51B;', 'blue': '--bg-color: #0E94DD;', 'pink': '--bg-color: #E85297;', 'green': '--bg-color: #9FCB3D;'};
 
 const REST_AZIMUTH = 0
 const REST_POLAR = Math.PI / 2
-const SOFT_LIMIT = Math.PI / 15   // 15° — past this, spring back on release
-const HARD_LIMIT = Math.PI / 5    // 20° — drag can never exceed this
-const SPRING = 0.12               // higher = snappier return
+const HARD_LIMIT = Math.PI / 15    // 20° — drag can never exceed this
+const SPRING = 0.2                // higher = snappier return
+const REST_EPSILON = 0.0001       // stop springing when within this many radians
+
+// Default size of the PiP window relative to the iPod's currently rendered
+// on-screen size. 1 = same size as the iPod looks now; 0.5 = half-sized.
+// The PiP also opens centered on the iPod's current position.
+const PIP_DEFAULT_SCALE = 0.25
 
 function RubberBandControls() {
   const ref = useRef(null)
@@ -34,14 +49,12 @@ function RubberBandControls() {
     spherical.setFromVector3(offset)
 
     let changed = false
-    if (Math.abs(spherical.theta - REST_AZIMUTH) > SOFT_LIMIT) {
-      const goal = REST_AZIMUTH + Math.sign(spherical.theta - REST_AZIMUTH) * SOFT_LIMIT
-      spherical.theta += (goal - spherical.theta) * SPRING
+    if (Math.abs(spherical.theta - REST_AZIMUTH) > REST_EPSILON) {
+      spherical.theta += (REST_AZIMUTH - spherical.theta) * SPRING
       changed = true
     }
-    if (Math.abs(spherical.phi - REST_POLAR) > SOFT_LIMIT) {
-      const goal = REST_POLAR + Math.sign(spherical.phi - REST_POLAR) * SOFT_LIMIT
-      spherical.phi += (goal - spherical.phi) * SPRING
+    if (Math.abs(spherical.phi - REST_POLAR) > REST_EPSILON) {
+      spherical.phi += (REST_POLAR - spherical.phi) * SPRING
       changed = true
     }
     if (changed) {
@@ -72,6 +85,24 @@ function RubberBandControls() {
 export default function App() {
   const [accessToken, setAccessToken] = useState(null)
   const [view, setView] = useState('now_playing')
+  const [menuIndex, setMenuIndex] = useState(0)
+  const [playlistIndex, setPlaylistIndex] = useState(0)
+  const [playlists, setPlaylists] = useState([])
+  const [likedIndex, setLikedIndex] = useState(0)
+  const [likedSongs, setLikedSongs] = useState([])
+  const [extrasIndex, setExtrasIndex] = useState(0)
+  const [shuffleOn, setShuffleOn] = useState(false)
+  const pomodoro = usePomodoro()
+  const [index, setIndex] = useState(0);
+
+  const nextTheme = () => {
+    setIndex((prevIndex) => (prevIndex + 1) % themes.length);
+  };
+
+  const prevTheme = () => {
+    setIndex((prevIndex) => (prevIndex - 1 + themes.length) % themes.length);
+  };
+
 
   // ── Handle OAuth callback & saved token ──────────────────────
   useEffect(() => {
@@ -92,9 +123,30 @@ export default function App() {
     }
   }, [])
 
-  const { playerState, isReady, error, controls } = useSpotifyPlayer(accessToken)
+  const { playerState, isReady, deviceId, error, controls } = useSpotifyPlayer(accessToken)
   const { progressMs, durationMs, progressPct } = useProgress(playerState)
   const { message: toastMessage, showToast } = useToast()
+  const { pipWindow, openPip, closePip, isSupported: pipSupported } = useDocumentPiP()
+  const [pipScale, setPipScale] = useState(1)
+  const ipodOnScreenRef = useRef(null)
+
+  // ── Auto-scale iPod to fit PiP window as user drags its edges ───
+  useEffect(() => {
+    if (!pipWindow) {
+      setPipScale(1)
+      return
+    }
+    const body = pipWindow.document.body
+    const compute = () => {
+      const sx = body.clientWidth / IPOD_OUTER_WIDTH
+      const sy = body.clientHeight / IPOD_OUTER_HEIGHT
+      setPipScale(Math.min(sx, sy))
+    }
+    compute()
+    const obs = new ResizeObserver(compute)
+    obs.observe(body)
+    return () => obs.disconnect()
+  }, [pipWindow])
 
   const isLoggedIn = Boolean(accessToken)
 
@@ -115,6 +167,89 @@ export default function App() {
     if (isReady) showToast('iSpotify connected!')
   }, [isReady, showToast])
 
+  // ── Reconcile local shuffle state with Spotify ─────────────
+  useEffect(() => {
+    if (typeof playerState?.shuffle === 'boolean') {
+      setShuffleOn(playerState.shuffle)
+    }
+  }, [playerState?.shuffle])
+
+  // ── Toggle Spotify shuffle (optimistic, reverts on failure) ─
+  const toggleShuffle = useCallback(async () => {
+    if (!deviceId) {
+      showToast('Player not ready yet.')
+      return
+    }
+    const next = !shuffleOn
+    setShuffleOn(next)
+    try {
+      await setShuffle(accessToken, deviceId, next)
+    } catch (e) {
+      setShuffleOn(!next)
+      showToast(e.message ?? 'Could not toggle shuffle')
+    }
+  }, [accessToken, deviceId, shuffleOn, showToast])
+
+  // ── Activate a menu item ────────────────────────────────────
+  const activateMenuItem = useCallback((index) => {
+    const item = MENU_ITEMS[index]
+    if (!item?.enabled) return
+    if (item.id === 'playlists') {
+      setPlaylistIndex(0)
+      setView('playlists')
+    } else if (item.id === 'liked_songs') {
+      setLikedIndex(0)
+      setView('liked_songs')
+    } else if (item.id === 'extras') {
+      setExtrasIndex(0)
+      setView('extras')
+    } else if (item.id === 'shuffle') {
+      toggleShuffle()
+    } 
+  }, [toggleShuffle])
+
+  // ── Activate an extras item ─────────────────────────────────
+  const activateExtrasItem = useCallback((index) => {
+    const item = EXTRAS_ITEMS[index]
+    if (!item) return
+    if (item.id === 'pomodoro') {
+      setView('pomodoro')
+    }
+  }, [])
+
+  // ── Play a playlist by index, then return to Now Playing ───
+  const playPlaylistAt = useCallback(async (index) => {
+    const playlist = playlists[index]
+    if (!playlist) return
+    if (!deviceId) {
+      showToast('Player not ready yet.')
+      return
+    }
+    try {
+      await playContext(accessToken, deviceId, playlist.uri)
+      setView('now_playing')
+    } catch (e) {
+      showToast(e.message ?? 'Could not start playlist')
+    }
+  }, [playlists, deviceId, accessToken, showToast])
+
+  // ── Play a liked song; queue up to 100 from selection ──────
+  const playLikedSongAt = useCallback(async (index) => {
+    const track = likedSongs[index]
+    if (!track) return
+    if (!deviceId) {
+      showToast('Player not ready yet.')
+      return
+    }
+    const uris = likedSongs.slice(index, index + 100).map((t) => t.uri)
+    try {
+      await playTracks(accessToken, deviceId, uris, 0)
+      setView('now_playing')
+    } catch (e) {
+      showToast(e.message ?? 'Could not start playback')
+    }
+  }, [likedSongs, deviceId, accessToken, showToast])
+
   // ── Click Wheel Actions ──────────────────────────────────────
   const handleWheelAction = useCallback(
     async (action) => {
@@ -124,25 +259,59 @@ export default function App() {
       }
       switch (action) {
         case 'play_pause':
-          // Center acts as Select on the menu, Play/Pause on Now Playing.
           if (view === 'menu') {
-            setView('now_playing')
+            activateMenuItem(menuIndex)
+          } else if (view === 'playlists') {
+            await playPlaylistAt(playlistIndex)
+          } else if (view === 'liked_songs') {
+            await playLikedSongAt(likedIndex)
+          } else if (view === 'extras') {
+            activateExtrasItem(extrasIndex)
+          } else if (view === 'pomodoro') {
+            pomodoro.toggleRunning()
           } else {
             await controls.togglePlay()
           }
           break
         case 'next':
-          await controls.nextTrack()
+          if (view === 'menu') {
+            setMenuIndex((i) => Math.min(MENU_ITEMS.length - 1, i + 1))
+          } else if (view === 'playlists') {
+            setPlaylistIndex((i) => Math.min(Math.max(0, playlists.length - 1), i + 1))
+          } else if (view === 'liked_songs') {
+            setLikedIndex((i) => Math.min(Math.max(0, likedSongs.length - 1), i + 1))
+          } else if (view === 'extras') {
+            setExtrasIndex((i) => Math.min(EXTRAS_ITEMS.length - 1, i + 1))
+          } else if (view === 'pomodoro') {
+            pomodoro.skipPhase()
+          } else {
+            await controls.nextTrack()
+          }
           break
         case 'prev':
-          await controls.previousTrack()
+          if (view === 'menu') {
+            setMenuIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'playlists') {
+            setPlaylistIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'liked_songs') {
+            setLikedIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'extras') {
+            setExtrasIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'pomodoro') {
+            pomodoro.resetPhase()
+          } else {
+            await controls.previousTrack()
+          }
           break
         case 'menu':
-          setView((v) => (v === 'menu' ? 'now_playing' : 'menu'))
+          if (view === 'pomodoro') setView('extras')
+          else if (view === 'playlists' || view === 'liked_songs' || view === 'extras') setView('menu')
+          else if (view === 'menu') setView('now_playing')
+          else setView('menu')
           break
       }
     },
-    [isLoggedIn, controls, showToast, view],
+    [isLoggedIn, controls, showToast, view, menuIndex, playlistIndex, playlists.length, likedIndex, likedSongs.length, extrasIndex, activateMenuItem, activateExtrasItem, playPlaylistAt, playLikedSongAt, pomodoro],
   )
 
   // ── Keyboard Shortcuts ───────────────────────────────────────
@@ -154,7 +323,8 @@ export default function App() {
         Enter:      'play_pause',
         ArrowRight: 'next',
         ArrowLeft:  'prev',
-        ArrowUp:    'menu',
+        ArrowDown:  'next',
+        ArrowUp:    'prev',
         Escape:     'menu',
       }
       const action = map[e.code]
@@ -164,8 +334,12 @@ export default function App() {
       }
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleWheelAction])
+    pipWindow?.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      pipWindow?.removeEventListener('keydown', onKeyDown)
+    }
+  }, [handleWheelAction, pipWindow])
 
   // ── Login ────────────────────────────────────────────────────
   async function handleLogin() {
@@ -174,35 +348,218 @@ export default function App() {
 
   function renderScreen() {
     if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />
-    if (view === 'menu') return <MenuScreen />
+    if (view === 'menu') {
+      return (
+        <MenuScreen
+          selectedIndex={menuIndex}
+          onSelect={setMenuIndex}
+          onActivate={(i) => { setMenuIndex(i); activateMenuItem(i) }}
+          shuffleOn={shuffleOn}
+        />
+      )
+    }
+    if (view === 'playlists') {
+      return (
+        <PlaylistsScreen
+          accessToken={accessToken}
+          selectedIndex={playlistIndex}
+          onSelect={setPlaylistIndex}
+          onActivate={(i) => { setPlaylistIndex(i); playPlaylistAt(i) }}
+          onLoaded={setPlaylists}
+          onScopeError={(status) => {
+            localStorage.removeItem('spotify_token')
+            setAccessToken(null)
+            showToast(
+              status === 403
+                ? 'Playlist scope missing — please sign in again.'
+                : 'Session expired — please sign in again.',
+            )
+          }}
+        />
+      )
+    }
+    if (view === 'liked_songs') {
+      return (
+        <LikedSongsScreen
+          accessToken={accessToken}
+          selectedIndex={likedIndex}
+          onSelect={setLikedIndex}
+          onActivate={(i) => { setLikedIndex(i); playLikedSongAt(i) }}
+          onLoaded={setLikedSongs}
+          onScopeError={(status) => {
+            localStorage.removeItem('spotify_token')
+            setAccessToken(null)
+            showToast(
+              status === 403
+                ? 'Library scope missing — please sign in again.'
+                : 'Session expired — please sign in again.',
+            )
+          }}
+        />
+      )
+    }
+    if (view === 'extras') {
+      return (
+        <ExtrasScreen
+          selectedIndex={extrasIndex}
+          onSelect={setExtrasIndex}
+          onActivate={(i) => { setExtrasIndex(i); activateExtrasItem(i) }}
+        />
+      )
+    }
+    if (view === 'pomodoro') {
+      return (
+        <PomodoroScreen
+          phase={pomodoro.phase}
+          running={pomodoro.running}
+          secondsLeft={pomodoro.secondsLeft}
+          cycle={pomodoro.cycle}
+          progress={pomodoro.progress}
+        />
+      )
+    }
     return (
       <NowPlayingScreen
         playerState={playerState}
         progressMs={progressMs}
         durationMs={durationMs}
         progressPct={progressPct}
+        pomodoro={pomodoro}
       />
     )
   }
 
+  const ipodNode = (
+    <IpodShell wheel={<ClickWheel onAction={handleWheelAction} />}>
+      {renderScreen()}
+    </IpodShell>
+  )
+
   return (
     <>
-      <Particles />
+        {pipWindow ? (
+          <>
+            {createPortal(
+              <>
+                <div style={{ transform: `scale(${pipScale})`, transformOrigin: 'center center' }}>
+                  {ipodNode}
+                </div>
+                <Toast message={toastMessage} />
+              </>,
+              pipWindow.document.body
+            )}
+            <div style={pipPlaceholderStyles.wrap}>
+              <div style={pipPlaceholderStyles.card}>
+                <div style={pipPlaceholderStyles.title}>You knew what that button did</div>
+                <button
+                  style={pipPlaceholderStyles.button}
+                  onClick={closePip}
+                >
+                  Return to main window
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <Particles />
 
-      <Canvas
-        camera={{ position: [0, 0, 300], fov: 50, near: 1, far: 5000 }}
-        style={{ position: 'fixed', inset: 0, touchAction: 'none' }}
-        gl={{ alpha: true, antialias: true }}
-      >
-        <RubberBandControls />
-        <Html transform scale={15}>
-          <IpodShell wheel={<ClickWheel onAction={handleWheelAction} />}>
-            {renderScreen()}
-          </IpodShell>
-        </Html>
-      </Canvas>
+            <Canvas
+              camera={{ position: [0, 0, 300], fov: 50, near: 1, far: 5000 }}
+              style={{ position: 'fixed', inset: 0, touchAction: 'none' }}
+              gl={{ alpha: true, antialias: true }}
+            >
+              <RubberBandControls />
+              <Html transform scale={15}>
+                <div ref={ipodOnScreenRef}>{ipodNode}</div>
+              </Html>
+            </Canvas>
 
-      <Toast message={toastMessage} />
-    </>
+            <Toast message={toastMessage} />
+
+            {pipSupported && (
+              <button
+                style={windowedButtonStyles.button}
+                onClick={() => {
+                  const rect = ipodOnScreenRef.current?.getBoundingClientRect()
+                  const baseW = rect?.width ?? IPOD_OUTER_WIDTH
+                  const baseH = rect?.height ?? IPOD_OUTER_HEIGHT
+                  const w = Math.round(baseW * PIP_DEFAULT_SCALE)
+                  const h = Math.round(baseH * PIP_DEFAULT_SCALE)
+                  const cx = (rect?.left ?? 0) + (rect?.width ?? 0) / 2
+                  const cy = (rect?.top ?? 0) + (rect?.height ?? 0) / 2
+                  const chromeTop = window.outerHeight - window.innerHeight
+                  const x = Math.round(window.screenX + cx - w / 2)
+                  const y = Math.round(window.screenY + chromeTop + cy - h / 2)
+                  openPip({
+                    width: w,
+                    height: h,
+                    background: 'linear-gradient(180deg, #0E94DD, #0e83c7)',
+
+                    x,
+                    y,
+                  })
+                } }
+                title="Put dat iPod in the corner where it belongs"
+              >
+                Windowed Mode
+              </button>
+            )}
+          </>
+        )}
+      </>
   )
+}
+
+const windowedButtonStyles = {
+  button: {
+    position: 'fixed',
+    top: '12px',
+    right: '12px',
+    zIndex: 10000,
+    padding: '6px 12px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#111',
+    background: 'rgba(255,255,255,0.85)',
+    border: '1px solid rgba(0,0,0,0.25)',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    backdropFilter: 'blur(4px)',
+  },
+}
+
+const pipPlaceholderStyles = {
+  wrap: {
+    position: 'fixed',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  card: {
+    padding: '20px 24px',
+    borderRadius: '10px',
+    background: 'rgba(255,255,255,0.9)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    textAlign: 'center',
+    fontFamily: 'Helvetica, Arial, sans-serif',
+  },
+  title: {
+    fontSize: '14px',
+    fontWeight: 700,
+    color: '#111',
+    marginBottom: '10px',
+  },
+  button: {
+    padding: '8px 14px',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#fff',
+    background: '#1d6cff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
 }

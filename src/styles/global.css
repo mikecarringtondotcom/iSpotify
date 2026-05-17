@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@300;400;700&display=swap');
+
+body {
+  font-family: 'LXGW WenKai TC', cursive, serif;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -14,21 +20,38 @@
   --font: 'DM Sans', -apple-system, sans-serif;
 }
 
+.orange{
+ --bg-color: #F9B51B;
+}
+
+.blue{
+   --bg-color: #0E94DD;
+}
+
+.pink{
+   --bg-color: #E85297;
+}
+
+.green{
+   --bg-color: #9FCB3D;
+}
+
 body {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #d8dadc 0%, #a8aaac 100%);
+  background: linear-gradient(180deg, #0E94DD, #0e83c7);
   font-family: var(--font);
   overflow: hidden;
+  transition: background-color 0.3s ease;
 }
 
 /* Floating background particles */
 .particle {
   position: fixed;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.25);
   pointer-events: none;
   z-index: 0;
   animation: floatUp linear infinite;
@@ -50,13 +73,19 @@ body {
 /* Album art pulse when playing */
 @keyframes albumPulse {
   0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.025); }
+  50%       { transform: scale(1.75); }
 }
 
 /* Scrolling track name */
 @keyframes scrollText {
   0%,  20% { transform: translateX(0); }
   80%, 100% { transform: translateX(var(--scroll-dist, -40px)); }
+}
+
+/* One-way scroll with end-hold and snap reset */
+@keyframes scrollTextOnce {
+  0%,  5% { transform: translateX(0); }
+  65%, 100% { transform: translateX(var(--scroll-dist, -40px)); }
 }
 
 /* Wheel zone ripple */

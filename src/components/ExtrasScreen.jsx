@@ -1,10 +1,5 @@
-export const MENU_ITEMS = [
-  { id: 'playlists',   label: 'Playlists',     enabled: true,  showChevron: true  },
-  { id: 'liked_songs', label: 'Liked Songs',   enabled: true,  showChevron: true  },
-  { id: 'photos',      label: 'Photos',        enabled: false, showChevron: true  },
-  { id: 'extras',      label: 'Extras',        enabled: true,  showChevron: true  },
-  { id: 'settings',    label: 'Settings',      enabled: true, showChevron: true  },
-  { id: 'shuffle',     label: 'Shuffle Songs', enabled: true,  showChevron: false },
+export const EXTRAS_ITEMS = [
+  { id: 'pomodoro', label: 'Pomodoro' },
 ]
 
 const styles = {
@@ -55,10 +50,6 @@ const styles = {
     color: '#fff',
     textShadow: '0 1px 0 rgba(0,0,0,0.25)',
   },
-  rowDisabled: {
-    color: '#9aa0a6',
-    cursor: 'default',
-  },
   chevron: {
     fontSize: '14px',
     fontWeight: 700,
@@ -66,21 +57,19 @@ const styles = {
   },
 }
 
-export function MenuScreen({ selectedIndex, onSelect, onActivate, shuffleOn = false }) {
+export function ExtrasScreen({ selectedIndex, onSelect, onActivate }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={styles.headerTitle}>iPod</span>
+        <span style={styles.headerTitle}>Extras</span>
       </div>
 
       <div style={styles.list}>
-        {MENU_ITEMS.map((item, i) => {
+        {EXTRAS_ITEMS.map((item, i) => {
           const isSelected = i === selectedIndex
-          const looksActive = item.id === 'shuffle' ? shuffleOn : item.enabled
           const rowStyle = {
             ...styles.row,
             ...(isSelected ? styles.rowSelected : null),
-            ...(!looksActive && !isSelected ? styles.rowDisabled : null),
           }
           return (
             <div
@@ -90,7 +79,7 @@ export function MenuScreen({ selectedIndex, onSelect, onActivate, shuffleOn = fa
               onClick={() => onActivate?.(i)}
             >
               <span>{item.label}</span>
-              {item.showChevron && <span style={styles.chevron}>{'>'}</span>}
+              <span style={styles.chevron}>{'>'}</span>
             </div>
           )
         })}

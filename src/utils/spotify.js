@@ -11,6 +11,9 @@ export const SPOTIFY_SCOPES = [
   'user-read-currently-playing',
   'user-read-private',
   'user-read-email',
+  'playlist-read-private',
+  'playlist-read-collaborative',
+  'user-library-read',
 ].join(' ')
 
 // Generate and store a code verifier for PKCE
@@ -75,6 +78,103 @@ export async function transferPlayback(accessToken, deviceId) {
   if (!res.ok) {
     throw new Error('Failed to transfer playback')
   }
+}
+
+export async function fetchUserPlaylists(accessToken) {
+  const all = []
+  let url = 'https://api.spotify.com/v1/me/playlists?limit=50'
+  while (url) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) {
+      const err = new Error(`Failed to fetch playlists (${res.status})`)
+      err.status = res.status
+      throw err
+    }
+    const data = await res.json()
+    for (const item of data.items ?? []) {
+      if (item) all.push(item)
+    }
+    url = data.next
+  }
+  return all
+}
+
+export async function fetchLikedSongs(accessToken) {
+  const LIMIT = 50
+
+  async function fetchPage(offset) {
+    const res = await fetch(
+      `https://api.spotify.com/v1/me/tracks?limit=${LIMIT}&offset=${offset}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+    if (!res.ok) {
+      const err = new Error(`Failed to fetch liked songs (${res.status})`)
+      err.status = res.status
+      throw err
+    }
+    return res.json()
+  }
+
+  const first = await fetchPage(0)
+  const total = first.total ?? 0
+
+  const restOffsets = []
+  for (let o = LIMIT; o < total; o += LIMIT) restOffsets.push(o)
+  const restPages = await Promise.all(restOffsets.map(fetchPage))
+
+  const all = []
+  for (const page of [first, ...restPages]) {
+    for (const item of page.items ?? []) {
+      if (item?.track) all.push(item.track)
+    }
+  }
+  return all
+}
+
+async function playRequest(accessToken, deviceId, body) {
+  const url = `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`
+  const init = {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  }
+  let res = await fetch(url, init)
+  if (res.status === 404) {
+    // Device went idle — reactivate it, then retry once.
+    await transferPlayback(accessToken, deviceId)
+    res = await fetch(url, init)
+  }
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Failed to start playback (${res.status})`)
+  }
+}
+
+export async function playTracks(accessToken, deviceId, uris, offsetIndex = 0) {
+  await playRequest(accessToken, deviceId, { uris, offset: { position: offsetIndex } })
+}
+
+export async function setShuffle(accessToken, deviceId, state) {
+  const params = new URLSearchParams({ state: String(state) })
+  if (deviceId) params.set('device_id', deviceId)
+  const res = await fetch(
+    `https://api.spotify.com/v1/me/player/shuffle?${params.toString()}`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  )
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Failed to set shuffle (${res.status})`)
+  }
+}
+
+export async function playContext(accessToken, deviceId, contextUri) {
+  await playRequest(accessToken, deviceId, { context_uri: contextUri, offset: { position: 0 } })
 }
 
 export function formatMs(ms) {

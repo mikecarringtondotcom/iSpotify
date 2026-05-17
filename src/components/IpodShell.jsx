@@ -1,9 +1,15 @@
-// Bump MARGIN if the rounded chassis corners are still clipped.
-// It's a px buffer added on every side of the chassis box.
-const MARGIN = 20
+// Per-side buffer around the chassis box (px). Lower a value to tighten that
+// edge; raise it if the iPod's rounded corners start getting clipped on that
+// side. The PiP window auto-sizes to whatever you set here.
+const MARGINS = { top: 10, right: 20, bottom: 10, left: 20 }
 
 // Chassis box — the rectangle the iPod body fills.
 const CHASSIS = { width: 300, height: 556 }
+
+// Total rendered size of the IpodShell — exported so callers (e.g. the PiP
+// window) can size themselves to hug the iPod edge-to-edge.
+export const IPOD_OUTER_WIDTH = CHASSIS.width + MARGINS.left + MARGINS.right
+export const IPOD_OUTER_HEIGHT = CHASSIS.height + MARGINS.top + MARGINS.bottom
 
 // % of the chassis box (NOT the outer). Tune here if overlays drift on the photo.
 const COORDS = {
@@ -22,15 +28,15 @@ const styles = {
   outer: {
     position: 'relative',
     zIndex: 9999,
-    width:  CHASSIS.width  + 2 * MARGIN + 'px',
-    height: CHASSIS.height + 2 * MARGIN + 'px',
+    width:  IPOD_OUTER_WIDTH + 'px',
+    height: IPOD_OUTER_HEIGHT + 'px',
     overflow: 'hidden',
     animation: 'bootup 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both',
   },
   chassis: {
     position: 'absolute',
-    left: MARGIN + 'px',
-    top:  MARGIN + 'px',
+    left: MARGINS.left + 'px',
+    top:  MARGINS.top  + 'px',
     width:  CHASSIS.width  + 'px',
     height: CHASSIS.height + 'px',
   },
@@ -51,7 +57,7 @@ const styles = {
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    borderRadius: '6px',
+    borderRadius: '1.75px',
     ...COORDS.screen,
   },
   wheelArea: {

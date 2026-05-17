@@ -1,6 +1,34 @@
 import { useRef, useEffect } from 'react'
 import { formatMs } from '../utils/spotify'
 
+// Max scroll speed knob — lower = slower. Pixels per second the text travels
+// during the scrolling portion of the marquee. Holds at each end stay fixed.
+const SCROLL_PX_PER_SECOND = 25
+const HOLD_MS = 5000
+
+function useMarqueeScroll(ref, text) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const overflow = el.scrollWidth - el.parentElement.clientWidth
+    if (overflow <= 5) return
+    const distance = overflow + 10
+    const scrollMs = (distance / SCROLL_PX_PER_SECOND) * 1000
+    const totalMs = HOLD_MS * 2 + scrollMs
+    const holdOffset = HOLD_MS / totalMs
+    const animation = el.animate(
+      [
+        { transform: 'translateX(0)', offset: 0 },
+        { transform: 'translateX(0)', offset: holdOffset },
+        { transform: `translateX(-${distance}px)`, offset: 1 - holdOffset },
+        { transform: `translateX(-${distance}px)`, offset: 1 },
+      ],
+      { duration: totalMs, iterations: Infinity, easing: 'linear' },
+    )
+    return () => animation.cancel()
+  }, [text])
+}
+
 const styles = {
   container: {
     flex: 1,
@@ -19,19 +47,43 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexShrink: 0,
-    height: '16px',
+    height: '24px',
+  },
+  headerSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
   headerTitle: {
     color: '#111',
-    fontSize: '9px',
+    fontSize: '16px',
     fontWeight: 700,
     letterSpacing: '0.2px',
+    whiteSpace: 'nowrap',
   },
-  headerIcons: {
+  pomodoroChip: {
     display: 'flex',
     alignItems: 'center',
-    gap: '3px',
+    gap: '4px',
+    padding: '0 4px',
+    height: '14px',
+    borderRadius: '7px',
+    background: 'rgba(0,0,0,0.06)',
+    border: '1px solid rgba(0,0,0,0.25)',
+  },
+  pomodoroDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.25)',
+    flexShrink: 0,
+  },
+  pomodoroTime: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#111',
+    fontVariantNumeric: 'tabular-nums',
+    lineHeight: 1,
   },
   playIcon: {
     width: 0,
@@ -43,21 +95,21 @@ const styles = {
   body: {
     flex: 1,
     display: 'flex',
-    padding: '8px',
-    gap: '8px',
+    padding: '12px',
+    gap: '16px',
     minHeight: 0,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   art: {
-    width: '72px',
-    height: '72px',
+    width: '115px',
+    height: '115px',
     objectFit: 'cover',
     boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
     flexShrink: 0,
   },
   artPlaceholder: {
-    width: '72px',
-    height: '72px',
+    width: '115px',
+    height: '115px',
     background: '#cfd1d4',
     display: 'flex',
     alignItems: 'center',
@@ -75,7 +127,7 @@ const styles = {
     paddingTop: '2px',
   },
   trackName: {
-    fontSize: '11px',
+    fontSize: '15px',
     fontWeight: 700,
     color: '#111',
     overflow: 'hidden',
@@ -83,7 +135,7 @@ const styles = {
     lineHeight: 1.2,
   },
   trackArtist: {
-    fontSize: '10px',
+    fontSize: '14px',
     color: '#222',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -92,7 +144,7 @@ const styles = {
     lineHeight: 1.2,
   },
   trackAlbum: {
-    fontSize: '10px',
+    fontSize: '14px',
     color: '#222',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -101,33 +153,30 @@ const styles = {
     lineHeight: 1.2,
   },
   trackNumber: {
-    fontSize: '10px',
+    fontSize: '14px',
     color: '#111',
     marginTop: '10px',
     fontVariantNumeric: 'tabular-nums',
   },
   footer: {
-    padding: '4px 8px 8px',
+    padding: '0 8px 4px',
     flexShrink: 0,
   },
-  progressRow: {
+  timesRow: {
     display: 'flex',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '5px',
+    marginTop: '3px',
   },
   timeLabel: {
-    fontSize: '9px',
+    fontSize: '18px',
     color: '#111',
     fontVariantNumeric: 'tabular-nums',
     fontWeight: 600,
-    minWidth: '24px',
-  },
-  timeRight: {
-    textAlign: 'right',
   },
   progressTrack: {
     flex: 1,
-    height: '5px',
+    height: '18px',
     background: 'linear-gradient(180deg, #d6d8dc, #ecedee)',
     border: '1px solid rgba(0,0,0,0.35)',
     borderRadius: '3px',
@@ -159,21 +208,29 @@ const styles = {
   },
 }
 
-export function NowPlayingScreen({ playerState, progressMs, durationMs, progressPct }) {
+function formatTimer(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+export function NowPlayingScreen({ playerState, progressMs, durationMs, progressPct, pomodoro }) {
   const track = playerState?.track_window?.current_track
   const nameScrollRef = useRef(null)
+  const artistScrollRef = useRef(null)
+  const albumScrollRef = useRef(null)
 
-  useEffect(() => {
-    const el = nameScrollRef.current
-    if (!el) return
-    const overflow = el.scrollWidth - el.parentElement.clientWidth
-    if (overflow > 5) {
-      el.style.setProperty('--scroll-dist', `-${overflow + 10}px`)
-      el.style.animation = 'scrollText 4s ease-in-out infinite alternate'
-    } else {
-      el.style.animation = 'none'
-    }
-  }, [track?.name])
+  const pomodoroActive = !!pomodoro && (pomodoro.running || pomodoro.secondsLeft < pomodoro.phaseTotal)
+  const pomodoroDotColor = pomodoro?.phase === 'work'
+    ? 'linear-gradient(180deg, #6aa9ff 0%, #2f6bd6 50%, #1f4fb8 100%)'
+    : 'linear-gradient(180deg, #6ce06c 0%, #2fa82f 50%, #1f7a1f 100%)'
+
+  const artistText = track?.artists?.map((a) => a.name).join(', ') ?? 'Connect Spotify'
+  const albumText = track?.album?.name ?? ''
+
+  useMarqueeScroll(nameScrollRef, track?.name)
+  useMarqueeScroll(artistScrollRef, artistText)
+  useMarqueeScroll(albumScrollRef, albumText)
 
   const albumImageUrl = track?.album?.images?.[0]?.url
   const trackNumber = track?.track_number
@@ -183,9 +240,19 @@ export function NowPlayingScreen({ playerState, progressMs, durationMs, progress
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={styles.headerTitle}>Now Playing</span>
-        <div style={styles.headerIcons}>
+        <div style={styles.headerSection}>
           <div style={styles.playIcon} />
+        </div>
+        <div style={styles.headerSection}>
+          <span style={styles.headerTitle}>Now Playing</span>
+        </div>
+        <div style={styles.headerSection}>
+          {pomodoroActive && (
+            <span style={styles.pomodoroChip}>
+              <span style={{ ...styles.pomodoroDot, background: pomodoroDotColor }} />
+              <span style={styles.pomodoroTime}>{formatTimer(pomodoro.secondsLeft)}</span>
+            </span>
+          )}
           <Battery />
         </div>
       </div>
@@ -212,9 +279,17 @@ export function NowPlayingScreen({ playerState, progressMs, durationMs, progress
             </span>
           </div>
           <div style={styles.trackArtist}>
-            {track?.artists?.map((a) => a.name).join(', ') ?? 'Connect Spotify'}
+            <span ref={artistScrollRef} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+              {artistText}
+            </span>
           </div>
-          {track?.album?.name && <div style={styles.trackAlbum}>{track.album.name}</div>}
+          {track?.album?.name && (
+            <div style={styles.trackAlbum}>
+              <span ref={albumScrollRef} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+                {albumText}
+              </span>
+            </div>
+          )}
           {trackNumber && totalTracks && (
             <div style={styles.trackNumber}>
               {trackNumber} of {totalTracks}
@@ -224,14 +299,12 @@ export function NowPlayingScreen({ playerState, progressMs, durationMs, progress
       </div>
 
       <div style={styles.footer}>
-        <div style={styles.progressRow}>
+        <div style={styles.progressTrack}>
+          <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
+        </div>
+        <div style={styles.timesRow}>
           <span style={styles.timeLabel}>{formatMs(progressMs)}</span>
-          <div style={styles.progressTrack}>
-            <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
-          </div>
-          <span style={{ ...styles.timeLabel, ...styles.timeRight }}>
-            -{formatMs(remainingMs)}
-          </span>
+          <span style={styles.timeLabel}>-{formatMs(remainingMs)}</span>
         </div>
       </div>
     </div>
