@@ -17,12 +17,15 @@ import { PlaylistsScreen } from './components/PlaylistsScreen'
 import { LikedSongsScreen } from './components/LikedSongsScreen'
 import { ExtrasScreen, EXTRAS_ITEMS } from './components/ExtrasScreen'
 import { PomodoroScreen } from './components/PomodoroScreen'
+import { SettingsScreen, SETTINGS_ITEMS } from './components/SettingsScreen'
+import { ThemeScreen, THEME_ITEMS } from './components/ThemeScreen'
+import { BioScreen } from './components/BioScreen'
 import { ClickWheel } from './components/ClickWheel'
 import { Toast } from './components/Toast'
 import { Particles } from './components/Particles'
 import './styles/global.css';
 
-const themes = {'orange': '--bg-color: #F9B51B;', 'blue': '--bg-color: #0E94DD;', 'pink': '--bg-color: #E85297;', 'green': '--bg-color: #9FCB3D;'};
+const THEME_CLASSES = THEME_ITEMS.map((t) => `theme-${t.id}`)
 
 const REST_AZIMUTH = 0
 const REST_POLAR = Math.PI / 2
@@ -91,18 +94,22 @@ export default function App() {
   const [likedIndex, setLikedIndex] = useState(0)
   const [likedSongs, setLikedSongs] = useState([])
   const [extrasIndex, setExtrasIndex] = useState(0)
+  const [settingsIndex, setSettingsIndex] = useState(0)
+  const [themeIndex, setThemeIndex] = useState(0)
   const [shuffleOn, setShuffleOn] = useState(false)
   const pomodoro = usePomodoro()
-  const [index, setIndex] = useState(0);
 
-  const nextTheme = () => {
-    setIndex((prevIndex) => (prevIndex + 1) % themes.length);
-  };
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('ispotify_theme')
+    return THEME_ITEMS.some((t) => t.id === saved) ? saved : 'blue'
+  })
 
-  const prevTheme = () => {
-    setIndex((prevIndex) => (prevIndex - 1 + themes.length) % themes.length);
-  };
-
+  // ── Apply theme class to <body> ──────────────────────────────
+  useEffect(() => {
+    document.body.classList.remove(...THEME_CLASSES)
+    document.body.classList.add(`theme-${theme}`)
+    localStorage.setItem('ispotify_theme', theme)
+  }, [theme])
 
   // ── Handle OAuth callback & saved token ──────────────────────
   useEffect(() => {
@@ -203,9 +210,12 @@ export default function App() {
     } else if (item.id === 'extras') {
       setExtrasIndex(0)
       setView('extras')
+    } else if (item.id === 'settings') {
+      setSettingsIndex(0)
+      setView('settings')
     } else if (item.id === 'shuffle') {
       toggleShuffle()
-    } 
+    }
   }, [toggleShuffle])
 
   // ── Activate an extras item ─────────────────────────────────
@@ -215,6 +225,26 @@ export default function App() {
     if (item.id === 'pomodoro') {
       setView('pomodoro')
     }
+  }, [])
+
+  // ── Activate a settings item ────────────────────────────────
+  const activateSettingsItem = useCallback((index) => {
+    const item = SETTINGS_ITEMS[index]
+    if (!item) return
+    if (item.id === 'theme') {
+      const current = THEME_ITEMS.findIndex((t) => t.id === theme)
+      setThemeIndex(current >= 0 ? current : 0)
+      setView('theme')
+    } else if (item.id === 'bio') {
+      setView('bio')
+    }
+  }, [theme])
+
+  // ── Activate a theme item ───────────────────────────────────
+  const activateThemeItem = useCallback((index) => {
+    const item = THEME_ITEMS[index]
+    if (!item) return
+    setTheme(item.id)
   }, [])
 
   // ── Play a playlist by index, then return to Now Playing ───
@@ -267,6 +297,10 @@ export default function App() {
             await playLikedSongAt(likedIndex)
           } else if (view === 'extras') {
             activateExtrasItem(extrasIndex)
+          } else if (view === 'settings') {
+            activateSettingsItem(settingsIndex)
+          } else if (view === 'theme') {
+            activateThemeItem(themeIndex)
           } else if (view === 'pomodoro') {
             pomodoro.toggleRunning()
           } else {
@@ -282,6 +316,10 @@ export default function App() {
             setLikedIndex((i) => Math.min(Math.max(0, likedSongs.length - 1), i + 1))
           } else if (view === 'extras') {
             setExtrasIndex((i) => Math.min(EXTRAS_ITEMS.length - 1, i + 1))
+          } else if (view === 'settings') {
+            setSettingsIndex((i) => Math.min(SETTINGS_ITEMS.length - 1, i + 1))
+          } else if (view === 'theme') {
+            setThemeIndex((i) => Math.min(THEME_ITEMS.length - 1, i + 1))
           } else if (view === 'pomodoro') {
             pomodoro.skipPhase()
           } else {
@@ -297,6 +335,10 @@ export default function App() {
             setLikedIndex((i) => Math.max(0, i - 1))
           } else if (view === 'extras') {
             setExtrasIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'settings') {
+            setSettingsIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'theme') {
+            setThemeIndex((i) => Math.max(0, i - 1))
           } else if (view === 'pomodoro') {
             pomodoro.resetPhase()
           } else {
@@ -305,13 +347,14 @@ export default function App() {
           break
         case 'menu':
           if (view === 'pomodoro') setView('extras')
-          else if (view === 'playlists' || view === 'liked_songs' || view === 'extras') setView('menu')
+          else if (view === 'theme' || view === 'bio') setView('settings')
+          else if (view === 'playlists' || view === 'liked_songs' || view === 'extras' || view === 'settings') setView('menu')
           else if (view === 'menu') setView('now_playing')
           else setView('menu')
           break
       }
     },
-    [isLoggedIn, controls, showToast, view, menuIndex, playlistIndex, playlists.length, likedIndex, likedSongs.length, extrasIndex, activateMenuItem, activateExtrasItem, playPlaylistAt, playLikedSongAt, pomodoro],
+    [isLoggedIn, controls, showToast, view, menuIndex, playlistIndex, playlists.length, likedIndex, likedSongs.length, extrasIndex, settingsIndex, themeIndex, activateMenuItem, activateExtrasItem, activateSettingsItem, activateThemeItem, playPlaylistAt, playLikedSongAt, pomodoro],
   )
 
   // ── Keyboard Shortcuts ───────────────────────────────────────
@@ -407,6 +450,28 @@ export default function App() {
         />
       )
     }
+    if (view === 'settings') {
+      return (
+        <SettingsScreen
+          selectedIndex={settingsIndex}
+          onSelect={setSettingsIndex}
+          onActivate={(i) => { setSettingsIndex(i); activateSettingsItem(i) }}
+        />
+      )
+    }
+    if (view === 'theme') {
+      return (
+        <ThemeScreen
+          selectedIndex={themeIndex}
+          activeTheme={theme}
+          onSelect={setThemeIndex}
+          onActivate={(i) => { setThemeIndex(i); activateThemeItem(i) }}
+        />
+      )
+    }
+    if (view === 'bio') {
+      return <BioScreen />
+    }
     if (view === 'pomodoro') {
       return (
         <PomodoroScreen
@@ -441,8 +506,26 @@ export default function App() {
           <>
             {createPortal(
               <>
-                <div style={{ transform: `scale(${pipScale})`, transformOrigin: 'center center' }}>
-                  {ipodNode}
+                <div
+                  style={{
+                    width: IPOD_OUTER_WIDTH * pipScale,
+                    height: IPOD_OUTER_HEIGHT * pipScale,
+                    position: 'relative',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: IPOD_OUTER_WIDTH,
+                      height: IPOD_OUTER_HEIGHT,
+                      transform: `scale(${pipScale})`,
+                      transformOrigin: 'top left',
+                    }}
+                  >
+                    {ipodNode}
+                  </div>
                 </div>
                 <Toast message={toastMessage} />
               </>,
@@ -462,7 +545,7 @@ export default function App() {
           </>
         ) : (
           <>
-            <Particles />
+            {/* <Particles /> */}
 
             <Canvas
               camera={{ position: [0, 0, 300], fov: 50, near: 1, far: 5000 }}
@@ -491,11 +574,11 @@ export default function App() {
                   const chromeTop = window.outerHeight - window.innerHeight
                   const x = Math.round(window.screenX + cx - w / 2)
                   const y = Math.round(window.screenY + chromeTop + cy - h / 2)
+                  const themeColor = THEME_ITEMS.find((t) => t.id === theme)?.swatch ?? '#0E94DD'
                   openPip({
                     width: w,
                     height: h,
-                    background: 'linear-gradient(180deg, #0E94DD, #0e83c7)',
-
+                    background: themeColor,
                     x,
                     y,
                   })

@@ -18,30 +18,23 @@ body {
   --silver-light: #e8eaec;
   --chrome: linear-gradient(145deg, #f0f2f4, #c0c2c4, #e8eaec, #b0b2b4);
   --font: 'DM Sans', -apple-system, sans-serif;
+  --bg-color: #0E94DD;
 }
 
-.orange{
- --bg-color: #F9B51B;
-}
-
-.blue{
-   --bg-color: #0E94DD;
-}
-
-.pink{
-   --bg-color: #E85297;
-}
-
-.green{
-   --bg-color: #9FCB3D;
-}
+body.theme-orange { --bg-color: #F9B51B; }
+body.theme-blue   { --bg-color: #0E94DD; }
+body.theme-pink   { --bg-color: #E85297; }
+body.theme-green  { --bg-color: #9FCB3D; }
+body.theme-gray  { --bg-color: #DDDDDD; }
 
 body {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #0E94DD, #0e83c7);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.12)),
+    var(--bg-color);
   font-family: var(--font);
   overflow: hidden;
   transition: background-color 0.3s ease;
