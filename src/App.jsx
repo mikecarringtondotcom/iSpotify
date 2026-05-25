@@ -15,6 +15,7 @@ import { NowPlayingScreen } from './components/NowPlayingScreen'
 import { MenuScreen, MENU_ITEMS } from './components/MenuScreen'
 import { PlaylistsScreen } from './components/PlaylistsScreen'
 import { LikedSongsScreen } from './components/LikedSongsScreen'
+import { PhotosScreen } from './components/PhotosScreen'
 import { ExtrasScreen, EXTRAS_ITEMS } from './components/ExtrasScreen'
 import { PomodoroScreen } from './components/PomodoroScreen'
 import { SettingsScreen, SETTINGS_ITEMS } from './components/SettingsScreen'
@@ -36,7 +37,12 @@ const REST_EPSILON = 0.0001       // stop springing when within this many radian
 // Default size of the PiP window relative to the iPod's currently rendered
 // on-screen size. 1 = same size as the iPod looks now; 0.5 = half-sized.
 // The PiP also opens centered on the iPod's current position.
-const PIP_DEFAULT_SCALE = 0.25
+const PIP_DEFAULT_SCALE = 0.7
+
+// Extra pixels added to the PiP window's height (below the iPod) so the
+// browser's titlebar/chrome doesn't clip it. The iPod itself stays at
+// PIP_DEFAULT_SCALE — only the surrounding window grows.
+const PIP_BOTTOM_EXTRA = 0
 
 function RubberBandControls() {
   const ref = useRef(null)
@@ -93,6 +99,8 @@ export default function App() {
   const [playlists, setPlaylists] = useState([])
   const [likedIndex, setLikedIndex] = useState(0)
   const [likedSongs, setLikedSongs] = useState([])
+  const [photosIndex, setPhotosIndex] = useState(0)
+  const [photos, setPhotos] = useState([])
   const [extrasIndex, setExtrasIndex] = useState(0)
   const [settingsIndex, setSettingsIndex] = useState(0)
   const [themeIndex, setThemeIndex] = useState(0)
@@ -134,26 +142,8 @@ export default function App() {
   const { progressMs, durationMs, progressPct } = useProgress(playerState)
   const { message: toastMessage, showToast } = useToast()
   const { pipWindow, openPip, closePip, isSupported: pipSupported } = useDocumentPiP()
-  const [pipScale, setPipScale] = useState(1)
+  const [floating, setFloating] = useState(false)
   const ipodOnScreenRef = useRef(null)
-
-  // ── Auto-scale iPod to fit PiP window as user drags its edges ───
-  useEffect(() => {
-    if (!pipWindow) {
-      setPipScale(1)
-      return
-    }
-    const body = pipWindow.document.body
-    const compute = () => {
-      const sx = body.clientWidth / IPOD_OUTER_WIDTH
-      const sy = body.clientHeight / IPOD_OUTER_HEIGHT
-      setPipScale(Math.min(sx, sy))
-    }
-    compute()
-    const obs = new ResizeObserver(compute)
-    obs.observe(body)
-    return () => obs.disconnect()
-  }, [pipWindow])
 
   const isLoggedIn = Boolean(accessToken)
 
@@ -207,6 +197,9 @@ export default function App() {
     } else if (item.id === 'liked_songs') {
       setLikedIndex(0)
       setView('liked_songs')
+    } else if (item.id === 'photos') {
+      setPhotosIndex(0)
+      setView('photos')
     } else if (item.id === 'extras') {
       setExtrasIndex(0)
       setView('extras')
@@ -295,6 +288,10 @@ export default function App() {
             await playPlaylistAt(playlistIndex)
           } else if (view === 'liked_songs') {
             await playLikedSongAt(likedIndex)
+          } else if (view === 'photos') {
+            if (photos.length > 0) setView('photo_view')
+          } else if (view === 'photo_view') {
+            // No-op in single photo view; menu button returns to grid.
           } else if (view === 'extras') {
             activateExtrasItem(extrasIndex)
           } else if (view === 'settings') {
@@ -314,6 +311,8 @@ export default function App() {
             setPlaylistIndex((i) => Math.min(Math.max(0, playlists.length - 1), i + 1))
           } else if (view === 'liked_songs') {
             setLikedIndex((i) => Math.min(Math.max(0, likedSongs.length - 1), i + 1))
+          } else if (view === 'photos' || view === 'photo_view') {
+            setPhotosIndex((i) => Math.min(Math.max(0, photos.length - 1), i + 1))
           } else if (view === 'extras') {
             setExtrasIndex((i) => Math.min(EXTRAS_ITEMS.length - 1, i + 1))
           } else if (view === 'settings') {
@@ -333,6 +332,8 @@ export default function App() {
             setPlaylistIndex((i) => Math.max(0, i - 1))
           } else if (view === 'liked_songs') {
             setLikedIndex((i) => Math.max(0, i - 1))
+          } else if (view === 'photos' || view === 'photo_view') {
+            setPhotosIndex((i) => Math.max(0, i - 1))
           } else if (view === 'extras') {
             setExtrasIndex((i) => Math.max(0, i - 1))
           } else if (view === 'settings') {
@@ -348,13 +349,14 @@ export default function App() {
         case 'menu':
           if (view === 'pomodoro') setView('extras')
           else if (view === 'theme' || view === 'bio') setView('settings')
-          else if (view === 'playlists' || view === 'liked_songs' || view === 'extras' || view === 'settings') setView('menu')
+          else if (view === 'photo_view') setView('photos')
+          else if (view === 'playlists' || view === 'liked_songs' || view === 'photos' || view === 'extras' || view === 'settings') setView('menu')
           else if (view === 'menu') setView('now_playing')
           else setView('menu')
           break
       }
     },
-    [isLoggedIn, controls, showToast, view, menuIndex, playlistIndex, playlists.length, likedIndex, likedSongs.length, extrasIndex, settingsIndex, themeIndex, activateMenuItem, activateExtrasItem, activateSettingsItem, activateThemeItem, playPlaylistAt, playLikedSongAt, pomodoro],
+    [isLoggedIn, controls, showToast, view, menuIndex, playlistIndex, playlists.length, likedIndex, likedSongs.length, photosIndex, photos.length, extrasIndex, settingsIndex, themeIndex, activateMenuItem, activateExtrasItem, activateSettingsItem, activateThemeItem, playPlaylistAt, playLikedSongAt, pomodoro],
   )
 
   // ── Keyboard Shortcuts ───────────────────────────────────────
@@ -441,6 +443,29 @@ export default function App() {
         />
       )
     }
+    if (view === 'photos') {
+      return (
+        <PhotosScreen
+          mode="grid"
+          selectedIndex={photosIndex}
+          onSelect={setPhotosIndex}
+          onActivate={(i) => {
+            setPhotosIndex(i)
+            if (photos.length > 0) setView('photo_view')
+          }}
+          onLoaded={setPhotos}
+        />
+      )
+    }
+    if (view === 'photo_view') {
+      return (
+        <PhotosScreen
+          mode="view"
+          selectedIndex={photosIndex}
+          onLoaded={setPhotos}
+        />
+      )
+    }
     if (view === 'extras') {
       return (
         <ExtrasScreen
@@ -500,48 +525,80 @@ export default function App() {
     </IpodShell>
   )
 
+  const themeColor = THEME_ITEMS.find((t) => t.id === theme)?.swatch ?? '#0E94DD'
+
+  const enterMini = () => {
+    if (pipSupported) {
+      // Match the Chrome PiP docs example: window opens at the player's
+      // exact clientWidth/clientHeight, the player is appended into the PiP
+      // body as-is. No scaling, no wrapper divs.
+      const node = ipodOnScreenRef.current
+      const w = 200
+      const h = 400
+      const rect = node?.getBoundingClientRect()
+      const cx = (rect?.left ?? window.innerWidth / 2) + (rect?.width ?? 0) / 2
+      const cy = (rect?.top ?? window.innerHeight / 2) + (rect?.height ?? 0) / 2
+      const chromeTop = window.outerHeight - window.innerHeight
+      const x = Math.round(window.screenX + cx - w / 2)
+      const y = Math.round(window.screenY + chromeTop + cy - h / 2)
+      openPip({ width: w, height: h, background: themeColor, x, y })
+    } else {
+      setFloating(true)
+    }
+  }
+
+  const exitMini = () => {
+    if (pipWindow) closePip()
+    else setFloating(false)
+  }
+
+  const inMiniMode = Boolean(pipWindow) || floating
+
   return (
     <>
-        {pipWindow ? (
+        {inMiniMode ? (
           <>
-            {createPortal(
-              <>
+            {pipWindow
+              ? createPortal(
+                  <>
+                    <div style={{ zoom: PIP_DEFAULT_SCALE }}>{ipodNode}</div>
+                    <Toast message={toastMessage} />
+                  </>,
+                  pipWindow.document.body
+                )
+              : (
                 <div
                   style={{
-                    width: IPOD_OUTER_WIDTH * pipScale,
-                    height: IPOD_OUTER_HEIGHT * pipScale,
-                    position: 'relative',
+                    ...floatingPlayerStyles.wrap,
+                    width: IPOD_OUTER_WIDTH * PIP_DEFAULT_SCALE,
+                    height: IPOD_OUTER_HEIGHT * PIP_DEFAULT_SCALE,
+                    background: themeColor,
                   }}
                 >
                   <div
                     style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
                       width: IPOD_OUTER_WIDTH,
                       height: IPOD_OUTER_HEIGHT,
-                      transform: `scale(${pipScale})`,
+                      transform: `scale(${PIP_DEFAULT_SCALE})`,
                       transformOrigin: 'top left',
                     }}
                   >
                     {ipodNode}
                   </div>
                 </div>
-                <Toast message={toastMessage} />
-              </>,
-              pipWindow.document.body
-            )}
+              )}
             <div style={pipPlaceholderStyles.wrap}>
               <div style={pipPlaceholderStyles.card}>
                 <div style={pipPlaceholderStyles.title}>You knew what that button did</div>
                 <button
                   style={pipPlaceholderStyles.button}
-                  onClick={closePip}
+                  onClick={exitMini}
                 >
                   Return to main window
                 </button>
               </div>
             </div>
+            {!pipWindow && <Toast message={toastMessage} />}
           </>
         ) : (
           <>
@@ -560,34 +617,19 @@ export default function App() {
 
             <Toast message={toastMessage} />
 
-            {pipSupported && (
-              <button
-                style={windowedButtonStyles.button}
-                onClick={() => {
-                  const rect = ipodOnScreenRef.current?.getBoundingClientRect()
-                  const baseW = rect?.width ?? IPOD_OUTER_WIDTH
-                  const baseH = rect?.height ?? IPOD_OUTER_HEIGHT
-                  const w = Math.round(baseW * PIP_DEFAULT_SCALE)
-                  const h = Math.round(baseH * PIP_DEFAULT_SCALE)
-                  const cx = (rect?.left ?? 0) + (rect?.width ?? 0) / 2
-                  const cy = (rect?.top ?? 0) + (rect?.height ?? 0) / 2
-                  const chromeTop = window.outerHeight - window.innerHeight
-                  const x = Math.round(window.screenX + cx - w / 2)
-                  const y = Math.round(window.screenY + chromeTop + cy - h / 2)
-                  const themeColor = THEME_ITEMS.find((t) => t.id === theme)?.swatch ?? '#0E94DD'
-                  openPip({
-                    width: w,
-                    height: h,
-                    background: themeColor,
-                    x,
-                    y,
-                  })
-                } }
-                title="Put dat iPod in the corner where it belongs"
-              >
-                Windowed Mode
-              </button>
-            )}
+            <button
+              style={windowedButtonStyles.button}
+              onClick={enterMini}
+              title={pipSupported
+                ? 'Put dat iPod in the corner where it belongs'
+                : 'Shrink dat iPod to the corner (your browser doesn’t support PiP windows)'}
+            >
+              <img
+                src="/picture-in-picture-on-icon-lg.png"
+                alt={pipSupported ? 'Enable Picture-in-Picture mode' : 'Shrink to corner'}
+                style={{ width: '50px', height: '50px' }}
+              />
+            </button>
           </>
         )}
       </>
@@ -604,11 +646,22 @@ const windowedButtonStyles = {
     fontSize: '12px',
     fontWeight: 600,
     color: '#111',
-    background: 'rgba(255,255,255,0.85)',
     border: '1px solid rgba(0,0,0,0.25)',
     borderRadius: '6px',
     cursor: 'pointer',
     backdropFilter: 'blur(4px)',
+  },
+}
+
+const floatingPlayerStyles = {
+  wrap: {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    zIndex: 10000,
+    overflow: 'hidden',
+    borderRadius: '12px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
   },
 }
 

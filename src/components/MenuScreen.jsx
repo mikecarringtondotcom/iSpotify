@@ -1,7 +1,7 @@
 export const MENU_ITEMS = [
   { id: 'playlists',   label: 'Playlists',     enabled: true,  showChevron: true  },
   { id: 'liked_songs', label: 'Liked Songs',   enabled: true,  showChevron: true  },
-  { id: 'photos',      label: 'Photos',        enabled: false, showChevron: true  },
+  { id: 'photos',      label: 'Photos',        enabled: true,  showChevron: true  },
   { id: 'extras',      label: 'Extras',        enabled: true,  showChevron: true  },
   { id: 'settings',    label: 'Settings',      enabled: true, showChevron: true  },
   { id: 'shuffle',     label: 'Shuffle Songs', enabled: true,  showChevron: false },

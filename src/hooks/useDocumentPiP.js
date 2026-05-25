@@ -10,7 +10,16 @@ export function useDocumentPiP() {
     async ({ width, height, background = '#fff', x, y } = {}) => {
       if (!PIP_SUPPORTED || pipWindow) return pipWindow
 
-      const win = await window.documentPictureInPicture.requestWindow({ width, height })
+      // preferInitialWindowPlacement (Chrome 130+) tells Chromium to ignore
+      // the cached size/position of the previously closed PiP window and
+      // honor the width/height we requested. Without it, Chrome silently
+      // reuses the last window's dimensions (which is why the PiP kept
+      // opening as a square regardless of the values passed in).
+      const win = await window.documentPictureInPicture.requestWindow({
+        width,
+        height,
+        preferInitialWindowPlacement: true,
+      })
 
       if (typeof x === 'number' && typeof y === 'number') {
         try { win.moveTo(x, y) } catch { /* browser refused */ }
@@ -26,7 +35,7 @@ export function useDocumentPiP() {
         background,
         overflow: 'hidden',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
       })
 
