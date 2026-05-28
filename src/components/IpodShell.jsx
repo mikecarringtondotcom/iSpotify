@@ -13,7 +13,7 @@ export const IPOD_OUTER_HEIGHT = CHASSIS.height + MARGINS.top + MARGINS.bottom
 
 // % of the chassis box (NOT the outer). Tune here if overlays drift on the photo.
 const COORDS = {
-  screen: { left: '1.70%',    top: '6.55%',   width: '95.25%',   height: '41.35%' },
+  screen: { left: '1.70%',    top: '6.70%',   width: '95.25%',   height: '41.35%' },
   wheel:  { centerLeft: '50%', centerTop: '72%', diameter: '62%' },
 }
 
@@ -57,7 +57,7 @@ const styles = {
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    borderRadius: '1.75px',
+    borderRadius: '2.5px',
     ...COORDS.screen,
   },
   wheelArea: {
