@@ -261,7 +261,7 @@ export function NowPlayingScreen({ playerState, progressMs, durationMs, progress
         {!playerState && (
           <div style={styles.deviceWarning}>
             <p style={styles.deviceWarningText}>
-              Press play and resume ur Spotify
+              The player timed out sry lol. Refresh the page and try again:P
             </p>
           </div>
         )}
