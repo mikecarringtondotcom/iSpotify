@@ -45,6 +45,25 @@ export async function buildAuthUrl() {
   return url.toString()
 }
 
+const TOKEN_KEY = 'spotify_token'
+const REFRESH_KEY = 'spotify_refresh_token'
+const EXPIRES_KEY = 'spotify_token_expires_at'
+
+function saveTokens({ access_token, refresh_token, expires_in }) {
+  if (access_token) localStorage.setItem(TOKEN_KEY, access_token)
+  if (refresh_token) localStorage.setItem(REFRESH_KEY, refresh_token)
+  if (expires_in) {
+    // Refresh 60s before expiry to avoid racing the server clock.
+    localStorage.setItem(EXPIRES_KEY, String(Date.now() + (expires_in - 60) * 1000))
+  }
+}
+
+export function clearTokens() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REFRESH_KEY)
+  localStorage.removeItem(EXPIRES_KEY)
+}
+
 export async function exchangeCodeForToken(code) {
   const verifier = sessionStorage.getItem('pkce_verifier')
   const res = await fetch('https://accounts.spotify.com/api/token', {
@@ -59,7 +78,45 @@ export async function exchangeCodeForToken(code) {
     }),
   })
   const data = await res.json()
+  if (data.access_token) saveTokens(data)
   return data.access_token
+}
+
+let refreshInFlight = null
+export async function refreshAccessToken() {
+  if (refreshInFlight) return refreshInFlight
+  const refresh = localStorage.getItem(REFRESH_KEY)
+  if (!refresh) return null
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: CLIENT_ID,
+          grant_type: 'refresh_token',
+          refresh_token: refresh,
+        }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      if (!data.access_token) return null
+      // Spotify may or may not rotate the refresh token; keep the old one if absent.
+      saveTokens({ refresh_token: refresh, ...data })
+      window.dispatchEvent(new CustomEvent('spotify:token-updated', { detail: data.access_token }))
+      return data.access_token
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+  return refreshInFlight
+}
+
+export async function getValidAccessToken() {
+  const token = localStorage.getItem(TOKEN_KEY)
+  const expiresAt = Number(localStorage.getItem(EXPIRES_KEY) || 0)
+  if (token && Date.now() < expiresAt) return token
+  return refreshAccessToken()
 }
 
 export async function transferPlayback(accessToken, deviceId) {

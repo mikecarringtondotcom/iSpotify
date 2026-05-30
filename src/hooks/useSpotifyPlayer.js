@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { transferPlayback } from '../utils/spotify'
+import { transferPlayback, getValidAccessToken, clearTokens } from '../utils/spotify'
 
 /**
  * Manages the Spotify Web Playback SDK lifecycle.
@@ -19,7 +19,13 @@ export function useSpotifyPlayer(accessToken) {
     window.onSpotifyWebPlaybackSDKReady = () => {
       const player = new window.Spotify.Player({
         name: 'iSpotify',
-        getOAuthToken: (cb) => cb(accessToken),
+        getOAuthToken: async (cb) => {
+          // The SDK calls this on connect AND whenever its token nears expiry.
+          // Always hand back a fresh token, otherwise the SDK throws
+          // "Token provider returned the same token twice" and stops playing.
+          const fresh = (await getValidAccessToken()) ?? accessToken
+          cb(fresh)
+        },
         volume: 1.0,
       })
 
@@ -40,7 +46,7 @@ export function useSpotifyPlayer(accessToken) {
 
       player.addListener('authentication_error', () => {
         setError('auth')
-        localStorage.removeItem('spotify_token')
+        clearTokens()
       })
 
       player.addListener('account_error', () => {

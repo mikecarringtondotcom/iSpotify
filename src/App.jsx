@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import { Spherical, Vector3 } from 'three'
-import { buildAuthUrl, exchangeCodeForToken, playContext, playTracks, setShuffle } from './utils/spotify'
+import { buildAuthUrl, clearTokens, exchangeCodeForToken, playContext, playTracks, setShuffle } from './utils/spotify'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import { useProgress } from './hooks/useProgress'
 import { useToast } from './hooks/useToast'
@@ -127,15 +127,20 @@ export default function App() {
     if (code) {
       window.history.replaceState({}, '', window.location.pathname)
       exchangeCodeForToken(code).then((token) => {
-        if (token) {
-          localStorage.setItem('spotify_token', token)
-          setAccessToken(token)
-        }
+        if (token) setAccessToken(token)
       })
     } else {
       const saved = localStorage.getItem('spotify_token')
       if (saved) setAccessToken(saved)
     }
+  }, [])
+
+  // Keep React state in sync when the SDK silently refreshes the token,
+  // so subsequent REST calls (playlists, play, shuffle) use the fresh one.
+  useEffect(() => {
+    const onTokenUpdate = (e) => setAccessToken(e.detail)
+    window.addEventListener('spotify:token-updated', onTokenUpdate)
+    return () => window.removeEventListener('spotify:token-updated', onTokenUpdate)
   }, [])
 
   const { playerState, isReady, deviceId, error, controls } = useSpotifyPlayer(accessToken)
@@ -151,7 +156,7 @@ export default function App() {
   useEffect(() => {
     if (error === 'auth') {
       setAccessToken(null)
-      localStorage.removeItem('spotify_token')
+      clearTokens()
       showToast('Session expired — please log in again.')
     } else if (error === 'premium_required') {
       showToast('Spotify Premium required for browser playback.')
@@ -412,7 +417,7 @@ export default function App() {
           onActivate={(i) => { setPlaylistIndex(i); playPlaylistAt(i) }}
           onLoaded={setPlaylists}
           onScopeError={(status) => {
-            localStorage.removeItem('spotify_token')
+            clearTokens()
             setAccessToken(null)
             showToast(
               status === 403
@@ -432,7 +437,7 @@ export default function App() {
           onActivate={(i) => { setLikedIndex(i); playLikedSongAt(i) }}
           onLoaded={setLikedSongs}
           onScopeError={(status) => {
-            localStorage.removeItem('spotify_token')
+            clearTokens()
             setAccessToken(null)
             showToast(
               status === 403
