@@ -24,6 +24,7 @@ import { BioScreen } from './components/BioScreen'
 import { ClickWheel } from './components/ClickWheel'
 import { Toast } from './components/Toast'
 import { Particles } from './components/Particles'
+import { Analytics } from "@vercel/analytics/next"
 import './styles/global.css';
 
 const THEME_CLASSES = THEME_ITEMS.map((t) => `theme-${t.id}`)
