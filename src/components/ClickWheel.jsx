@@ -13,10 +13,14 @@ const WHEEL_ZONES = [
   { id: 'prev', style: { left: 0,   top: '25%',  width: '35%', height: '50%' }, action: 'prev' },
 ]
 
-export function ClickWheel({ onAction }) {
+export function ClickWheel({ onAction, onButtonSound }) {
   const handleZoneClick = useCallback(
-    (action) => onAction(action),
-    [onAction],
+    (action) => {
+      // The center/select button is silent; the four outer buttons click.
+      onButtonSound?.()
+      onAction(action)
+    },
+    [onAction, onButtonSound],
   )
 
   const handleCenterClick = useCallback(() => {

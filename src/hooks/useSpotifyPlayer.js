@@ -75,12 +75,13 @@ export function useSpotifyPlayer(accessToken) {
   const togglePlay = useCallback(() => playerRef.current?.togglePlay(), [])
   const nextTrack = useCallback(() => playerRef.current?.nextTrack(), [])
   const previousTrack = useCallback(() => playerRef.current?.previousTrack(), [])
+  const seek = useCallback((positionMs) => playerRef.current?.seek(positionMs), [])
 
   return {
     playerState,
     isReady,
     deviceId,
     error,
-    controls: { togglePlay, nextTrack, previousTrack },
+    controls: { togglePlay, nextTrack, previousTrack, seek },
   }
 }

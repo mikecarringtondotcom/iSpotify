@@ -113,12 +113,54 @@ export default function App() {
     return THEME_ITEMS.some((t) => t.id === saved) ? saved : 'blue'
   })
 
+  const [soundEnabled, setSoundEnabled] = useState(
+    () => localStorage.getItem('ispotify_sound_effects') !== 'false',
+  )
+
   // ── Apply theme class to <body> ──────────────────────────────
   useEffect(() => {
     document.body.classList.remove(...THEME_CLASSES)
     document.body.classList.add(`theme-${theme}`)
     localStorage.setItem('ispotify_theme', theme)
   }, [theme])
+
+  // ── Click sound effect ──────────────────────────────────────
+  // Persist the toggle, and keep a ref so the (stable) play helper
+  // always reads the current value without re-creating callbacks.
+  useEffect(() => {
+    localStorage.setItem('ispotify_sound_effects', String(soundEnabled))
+  }, [soundEnabled])
+
+  const soundEnabledRef = useRef(soundEnabled)
+  useEffect(() => { soundEnabledRef.current = soundEnabled }, [soundEnabled])
+
+  const clickAudioRef = useRef(null)
+  useEffect(() => {
+    const audio = new Audio(encodeURI('/ipod classic 1st gen click.mp3'))
+    audio.preload = 'auto'
+    clickAudioRef.current = audio
+  }, [])
+
+  const playClickSound = useCallback(() => {
+    if (!soundEnabledRef.current) return
+    const audio = clickAudioRef.current
+    if (!audio) return
+    // Rewind so rapid presses always retrigger the click.
+    audio.currentTime = 0
+    audio.play().catch(() => {})
+  }, [])
+
+  const toggleSound = useCallback(() => setSoundEnabled((on) => !on), [])
+
+  // Wrap a list's onSelect so hovering to a *new* row clicks, mirroring the
+  // wheel/keyboard nav click. Skips when the highlight doesn't actually move.
+  const selectWithSound = useCallback(
+    (current, setter) => (i) => {
+      if (i !== current) playClickSound()
+      setter(i)
+    },
+    [playClickSound],
+  )
 
   // ── Handle OAuth callback & saved token ──────────────────────
   useEffect(() => {
@@ -150,6 +192,7 @@ export default function App() {
   const { pipWindow, openPip, closePip, isSupported: pipSupported } = useDocumentPiP()
   const [floating, setFloating] = useState(false)
   const ipodOnScreenRef = useRef(null)
+  const lastRewindRef = useRef(0)
 
   const isLoggedIn = Boolean(accessToken)
 
@@ -236,8 +279,10 @@ export default function App() {
       setView('theme')
     } else if (item.id === 'bio') {
       setView('bio')
+    } else if (item.id === 'sound_effects') {
+      toggleSound()
     }
-  }, [theme])
+  }, [theme, toggleSound])
 
   // ── Activate a theme item ───────────────────────────────────
   const activateThemeItem = useCallback((index) => {
@@ -349,7 +394,15 @@ export default function App() {
           } else if (view === 'pomodoro') {
             pomodoro.resetPhase()
           } else {
-            await controls.previousTrack()
+            // Single press → restart current song; double press within 5s → previous track
+            const now = Date.now()
+            if (now - lastRewindRef.current < 5000) {
+              lastRewindRef.current = 0
+              await controls.previousTrack()
+            } else {
+              lastRewindRef.current = now
+              await controls.seek(0)
+            }
           }
           break
         case 'menu':
@@ -381,6 +434,7 @@ export default function App() {
       const action = map[e.code]
       if (action) {
         e.preventDefault()
+        playClickSound()
         handleWheelAction(action)
       }
     }
@@ -390,7 +444,7 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown)
       pipWindow?.removeEventListener('keydown', onKeyDown)
     }
-  }, [handleWheelAction, pipWindow])
+  }, [handleWheelAction, pipWindow, playClickSound])
 
   // ── Login ────────────────────────────────────────────────────
   async function handleLogin() {
@@ -403,7 +457,7 @@ export default function App() {
       return (
         <MenuScreen
           selectedIndex={menuIndex}
-          onSelect={setMenuIndex}
+          onSelect={selectWithSound(menuIndex, setMenuIndex)}
           onActivate={(i) => { setMenuIndex(i); activateMenuItem(i) }}
           shuffleOn={shuffleOn}
         />
@@ -414,7 +468,7 @@ export default function App() {
         <PlaylistsScreen
           accessToken={accessToken}
           selectedIndex={playlistIndex}
-          onSelect={setPlaylistIndex}
+          onSelect={selectWithSound(playlistIndex, setPlaylistIndex)}
           onActivate={(i) => { setPlaylistIndex(i); playPlaylistAt(i) }}
           onLoaded={setPlaylists}
           onScopeError={(status) => {
@@ -434,7 +488,7 @@ export default function App() {
         <LikedSongsScreen
           accessToken={accessToken}
           selectedIndex={likedIndex}
-          onSelect={setLikedIndex}
+          onSelect={selectWithSound(likedIndex, setLikedIndex)}
           onActivate={(i) => { setLikedIndex(i); playLikedSongAt(i) }}
           onLoaded={setLikedSongs}
           onScopeError={(status) => {
@@ -454,7 +508,7 @@ export default function App() {
         <PhotosScreen
           mode="grid"
           selectedIndex={photosIndex}
-          onSelect={setPhotosIndex}
+          onSelect={selectWithSound(photosIndex, setPhotosIndex)}
           onActivate={(i) => {
             setPhotosIndex(i)
             if (photos.length > 0) setView('photo_view')
@@ -476,7 +530,7 @@ export default function App() {
       return (
         <ExtrasScreen
           selectedIndex={extrasIndex}
-          onSelect={setExtrasIndex}
+          onSelect={selectWithSound(extrasIndex, setExtrasIndex)}
           onActivate={(i) => { setExtrasIndex(i); activateExtrasItem(i) }}
         />
       )
@@ -485,8 +539,9 @@ export default function App() {
       return (
         <SettingsScreen
           selectedIndex={settingsIndex}
-          onSelect={setSettingsIndex}
+          onSelect={selectWithSound(settingsIndex, setSettingsIndex)}
           onActivate={(i) => { setSettingsIndex(i); activateSettingsItem(i) }}
+          soundOn={soundEnabled}
         />
       )
     }
@@ -495,7 +550,7 @@ export default function App() {
         <ThemeScreen
           selectedIndex={themeIndex}
           activeTheme={theme}
-          onSelect={setThemeIndex}
+          onSelect={selectWithSound(themeIndex, setThemeIndex)}
           onActivate={(i) => { setThemeIndex(i); activateThemeItem(i) }}
         />
       )
@@ -526,7 +581,7 @@ export default function App() {
   }
 
   const ipodNode = (
-    <IpodShell wheel={<ClickWheel onAction={handleWheelAction} />}>
+    <IpodShell wheel={<ClickWheel onAction={handleWheelAction} onButtonSound={playClickSound} />}>
       {renderScreen()}
     </IpodShell>
   )
