@@ -1,8 +1,8 @@
-export const CLIENT_ID = '3c981d418ad24a4f977cde7279b37496'
+export const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
 export const REDIRECT_URI =
   window.location.hostname === '127.0.0.1'
-    ? 'http://127.0.0.1:5173/'
-    : 'https://i-spotify-ten.vercel.app/'
+    ? import.meta.env.VITE_SPOTIFY_REDIRECT_URI_LOCAL
+    : import.meta.env.VITE_SPOTIFY_REDIRECT_URI_PROD //DONT WORRY ABOUT THIS I HAVE A VERCEL VERSION DEPLOYED IGNORE THIS FOR LOCAL DEV
 
 export const SPOTIFY_SCOPES = [
   'streaming',
