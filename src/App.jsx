@@ -23,7 +23,7 @@ import { ThemeScreen, THEME_ITEMS } from './components/ThemeScreen'
 import { BioScreen } from './components/BioScreen'
 import { ClickWheel } from './components/ClickWheel'
 import { Toast } from './components/Toast'
-import { Particles } from './components/Particles'
+import { AudioBackground } from './components/AudioBackground'
 import { Analytics } from "@vercel/analytics/react"
 import './styles/global.css';
 
@@ -663,7 +663,7 @@ export default function App() {
           </>
         ) : (
           <>
-            {/* <Particles /> */}
+            <AudioBackground playerState={playerState} />
 
             <Canvas
               camera={{ position: [0, 0, 300], fov: 50, near: 1, far: 5000 }}
