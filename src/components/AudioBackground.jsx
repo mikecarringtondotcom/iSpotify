@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAudioLevels } from '../hooks/useAudioLevels'
+import { BackgroundFlourish } from './BackgroundFlourish'
 
 /**
  * Frutiger Metro–style background: glossy glass bubbles that scale to the music.
@@ -114,6 +115,7 @@ export function AudioBackground({ playerState }) {
           }}
         />
       ))}
+      <BackgroundFlourish playerState={playerState} />
     </div>
   )
 }
