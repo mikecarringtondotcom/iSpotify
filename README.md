@@ -90,3 +90,4 @@ Then open your browser and go to `http://127.0.0.1:5173/`. Log in with Spotify a
 - You need **Spotify Premium** for playback to work this is just a limitation of Spotify's API
 - You must have Spotify **open and playing on another device or tab** before the player will activate
 - If you ever change your Redirect URI or Client ID, restart the app with `npm run dev`
+- If you are a cool person that doesn't want to use a local version on your machine but instead wants to use the link. DM me on instagram @mikeincode. I'll whitelist you in my Spotify dev dashboard.
