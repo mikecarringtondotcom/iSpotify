@@ -2,7 +2,7 @@
 Readme · MD
 # iSpotify by mikeincode
  
-I built this because I wanted a slick Picture-in-Picture Spotify controller for my PC — the default one just doesn't have cool points. Spotify's API made it pretty straightforward, and I went a little wild with the settings.
+I built this because I wanted a slick Picture-in-Picture Spotify controller for my PC — the default one just doesn't have cool points. Spotify's API made it pretty straightforward.
  
 > **If u found this from Instagram or TikTok** I can't add everyone as an authorized user on my Spotify Developer account, BUT you can run your own copy for free all you gotta do is follow the steps below. Make sure you have a Spotify Premium account or this won't work.
  
